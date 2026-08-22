@@ -1,0 +1,46 @@
+[0.042s] Invoking command in '/home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/deepak/moveit_ws/install/moveit_configs_utils:/opt/ros/humble /usr/bin/cmake /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer -DCMAKE_INSTALL_PREFIX=/home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer
+[0.235s] -- The C compiler identification is GNU 11.4.0
+[0.235s] -- The CXX compiler identification is GNU 11.4.0
+[0.235s] -- Detecting C compiler ABI info
+[0.235s] -- Detecting C compiler ABI info - done
+[0.235s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.235s] -- Detecting C compile features
+[0.235s] -- Detecting C compile features - done
+[0.235s] -- Detecting CXX compiler ABI info
+[0.247s] -- Detecting CXX compiler ABI info - done
+[0.253s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.253s] -- Detecting CXX compile features
+[0.254s] -- Detecting CXX compile features - done
+[0.258s] -- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.400s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.664s] -- Configuring done
+[0.664s] -- Generating done
+[0.665s] -- Build files have been written to: /home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer
+[0.677s] Invoked command in '/home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/deepak/moveit_ws/install/moveit_configs_utils:/opt/ros/humble /usr/bin/cmake /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer -DCMAKE_INSTALL_PREFIX=/home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer
+[0.679s] Invoking command in '/home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/deepak/moveit_ws/install/moveit_configs_utils:/opt/ros/humble /usr/bin/cmake --build /home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer -- -j20 -l20
+[0.724s] Invoked command in '/home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/deepak/moveit_ws/install/moveit_configs_utils:/opt/ros/humble /usr/bin/cmake --build /home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer -- -j20 -l20
+[0.725s] Invoking command in '/home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/deepak/moveit_ws/install/moveit_configs_utils:/opt/ros/humble /usr/bin/cmake --install /home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer
+[0.731s] -- Install configuration: ""
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/config
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/config/turtlebot3_lds_2d.lua
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/launch
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/launch/occupancy_grid.launch.py
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/launch/cartographer.launch.py
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/rviz
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/ament_index/resource_index/package_run_dependencies/turtlebot3_cartographer
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/ament_index/resource_index/parent_prefix_path/turtlebot3_cartographer
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/environment/ament_prefix_path.sh
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/environment/ament_prefix_path.dsv
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/environment/path.sh
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/environment/path.dsv
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/local_setup.bash
+[0.731s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/local_setup.sh
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/local_setup.zsh
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/local_setup.dsv
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/package.dsv
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/ament_index/resource_index/packages/turtlebot3_cartographer
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/cmake/turtlebot3_cartographerConfig.cmake
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/cmake/turtlebot3_cartographerConfig-version.cmake
+[0.732s] -- Installing: /home/deepak/task2/turtlebot3_ws/install/turtlebot3_cartographer/share/turtlebot3_cartographer/package.xml
+[0.733s] Invoked command in '/home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/deepak/moveit_ws/install/moveit_configs_utils:/opt/ros/humble /usr/bin/cmake --install /home/deepak/task2/turtlebot3_ws/build/turtlebot3_cartographer

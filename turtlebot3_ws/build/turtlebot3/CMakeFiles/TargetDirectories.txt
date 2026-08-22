@@ -1,0 +1,9 @@
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/uninstall.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/turtlebot3_uninstall.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/test.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/edit_cache.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/rebuild_cache.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/list_install_components.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/install.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/install/local.dir
+/home/deepak/task2/turtlebot3_ws/build/turtlebot3/CMakeFiles/install/strip.dir
