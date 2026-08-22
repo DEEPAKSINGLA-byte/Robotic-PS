@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepak/task2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk
+CMAKE_SOURCE_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk
+CMAKE_BINARY_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -142,9 +142,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk/CMakeFiles /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk/CMakeFiles /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -211,17 +211,17 @@ dynamixel_sdk/fast:
 .PHONY : dynamixel_sdk/fast
 
 #=============================================================================
-# Target rules for targets named ament_cmake_python_copy_dynamixel_sdk
+# Target rules for targets named ament_cmake_python_symlink_dynamixel_sdk
 
 # Build rule for target.
-ament_cmake_python_copy_dynamixel_sdk: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_copy_dynamixel_sdk
-.PHONY : ament_cmake_python_copy_dynamixel_sdk
+ament_cmake_python_symlink_dynamixel_sdk: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_symlink_dynamixel_sdk
+.PHONY : ament_cmake_python_symlink_dynamixel_sdk
 
 # fast build rule for target.
-ament_cmake_python_copy_dynamixel_sdk/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_copy_dynamixel_sdk.dir/build.make CMakeFiles/ament_cmake_python_copy_dynamixel_sdk.dir/build
-.PHONY : ament_cmake_python_copy_dynamixel_sdk/fast
+ament_cmake_python_symlink_dynamixel_sdk/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_symlink_dynamixel_sdk.dir/build.make CMakeFiles/ament_cmake_python_symlink_dynamixel_sdk.dir/build
+.PHONY : ament_cmake_python_symlink_dynamixel_sdk/fast
 
 #=============================================================================
 # Target rules for targets named ament_cmake_python_build_dynamixel_sdk_egg
@@ -237,17 +237,17 @@ ament_cmake_python_build_dynamixel_sdk_egg/fast:
 .PHONY : ament_cmake_python_build_dynamixel_sdk_egg/fast
 
 #=============================================================================
-# Target rules for targets named ament_cmake_python_copy_dynamixel_easy_sdk
+# Target rules for targets named ament_cmake_python_symlink_dynamixel_easy_sdk
 
 # Build rule for target.
-ament_cmake_python_copy_dynamixel_easy_sdk: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_copy_dynamixel_easy_sdk
-.PHONY : ament_cmake_python_copy_dynamixel_easy_sdk
+ament_cmake_python_symlink_dynamixel_easy_sdk: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_symlink_dynamixel_easy_sdk
+.PHONY : ament_cmake_python_symlink_dynamixel_easy_sdk
 
 # fast build rule for target.
-ament_cmake_python_copy_dynamixel_easy_sdk/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_copy_dynamixel_easy_sdk.dir/build.make CMakeFiles/ament_cmake_python_copy_dynamixel_easy_sdk.dir/build
-.PHONY : ament_cmake_python_copy_dynamixel_easy_sdk/fast
+ament_cmake_python_symlink_dynamixel_easy_sdk/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_symlink_dynamixel_easy_sdk.dir/build.make CMakeFiles/ament_cmake_python_symlink_dynamixel_easy_sdk.dir/build
+.PHONY : ament_cmake_python_symlink_dynamixel_easy_sdk/fast
 
 #=============================================================================
 # Target rules for targets named ament_cmake_python_build_dynamixel_easy_sdk_egg
@@ -685,8 +685,8 @@ help:
 	@echo "... test"
 	@echo "... ament_cmake_python_build_dynamixel_easy_sdk_egg"
 	@echo "... ament_cmake_python_build_dynamixel_sdk_egg"
-	@echo "... ament_cmake_python_copy_dynamixel_easy_sdk"
-	@echo "... ament_cmake_python_copy_dynamixel_sdk"
+	@echo "... ament_cmake_python_symlink_dynamixel_easy_sdk"
+	@echo "... ament_cmake_python_symlink_dynamixel_sdk"
 	@echo "... dynamixel_sdk_uninstall"
 	@echo "... uninstall"
 	@echo "... dynamixel_sdk"

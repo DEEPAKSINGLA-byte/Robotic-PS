@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/explore
+CMAKE_SOURCE_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/explore
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepak/task2/turtlebot3_ws/build/explore_lite
+CMAKE_BINARY_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/explore_lite
 
 # Utility rule file for explore_lite_uninstall.
 
@@ -67,7 +67,7 @@ include CMakeFiles/explore_lite_uninstall.dir/compiler_depend.make
 include CMakeFiles/explore_lite_uninstall.dir/progress.make
 
 CMakeFiles/explore_lite_uninstall:
-	/usr/bin/cmake -P /home/deepak/task2/turtlebot3_ws/build/explore_lite/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
+	/usr/bin/cmake -P /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/explore_lite/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
 
 explore_lite_uninstall: CMakeFiles/explore_lite_uninstall
 explore_lite_uninstall: CMakeFiles/explore_lite_uninstall.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/explore_lite_uninstall.dir/clean:
 .PHONY : CMakeFiles/explore_lite_uninstall.dir/clean
 
 CMakeFiles/explore_lite_uninstall.dir/depend:
-	cd /home/deepak/task2/turtlebot3_ws/build/explore_lite && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/explore /home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/explore /home/deepak/task2/turtlebot3_ws/build/explore_lite /home/deepak/task2/turtlebot3_ws/build/explore_lite /home/deepak/task2/turtlebot3_ws/build/explore_lite/CMakeFiles/explore_lite_uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/explore_lite && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/explore /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/explore /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/explore_lite /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/explore_lite /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/explore_lite/CMakeFiles/explore_lite_uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/explore_lite_uninstall.dir/depend
 

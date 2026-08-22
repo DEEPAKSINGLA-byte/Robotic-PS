@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/explore/include -I/opt/ros/humble/src/gtest_vendor/. -isystem /opt/ros/humble/src/gtest_vendor/include
+CXX_INCLUDES = -I/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/explore/include -I/opt/ros/humble/src/gtest_vendor/. -isystem /opt/ros/humble/src/gtest_vendor/include
 
 CXX_FLAGS = -fPIC -Wno-missing-field-initializers -Wall -Wextra -Wpedantic -Wno-null-dereference -std=gnu++14
 

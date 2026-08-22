@@ -1,14 +1,1 @@
-material traffic_right
-{
-  technique
-  {
-    pass
-    {
-      texture_unit
-      {
-        texture traffic_right.png
-      }
-    }
-  }
-}
-
+/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3_simulations/turtlebot3_gazebo/models/turtlebot3_autorace_2020/traffic_right/materials/scripts/traffic_right.material

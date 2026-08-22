@@ -17,7 +17,7 @@ def generate_launch_description():
     x_pose = LaunchConfiguration('x_pose', default='-2.0')
     y_pose = LaunchConfiguration('y_pose', default='-0.5')
 
-    world = '/home/deepak/task2/gazebo/worlds/small_house.world'
+    world = '/home/deepak/InterIIT_practice/task_2/gazebo/worlds/small_house.world'
 
 
     gzserver_cmd = IncludeLaunchDescription(
@@ -50,7 +50,7 @@ def generate_launch_description():
 
     set_env_gz_model = AppendEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH',
-        '/home/deepak/task2/gazebo/models:/home/deepak/task2/turtlebot3_ws/src/turtlebot3_simulations/turtlebot3_gazebo/models'
+        '/home/deepak/InterIIT_practice/task_2/gazebo/models:/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3_simulations/turtlebot3_gazebo/models'
     )
     ld.add_action(set_env_gz_model)
 

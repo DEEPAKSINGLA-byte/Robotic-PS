@@ -1,3 +1,1 @@
-# Constants
-# Request
-uint8 id
+/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_cmake/srv/GetPosition_Request.msg

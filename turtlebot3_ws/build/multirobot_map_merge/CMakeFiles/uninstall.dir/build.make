@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/map_merge
+CMAKE_SOURCE_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/map_merge
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepak/task2/turtlebot3_ws/build/multirobot_map_merge
+CMAKE_BINARY_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/multirobot_map_merge
 
 # Utility rule file for uninstall.
 
@@ -78,6 +78,6 @@ CMakeFiles/uninstall.dir/clean:
 .PHONY : CMakeFiles/uninstall.dir/clean
 
 CMakeFiles/uninstall.dir/depend:
-	cd /home/deepak/task2/turtlebot3_ws/build/multirobot_map_merge && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/map_merge /home/deepak/task2/turtlebot3_ws/src/m-explore-ros2/map_merge /home/deepak/task2/turtlebot3_ws/build/multirobot_map_merge /home/deepak/task2/turtlebot3_ws/build/multirobot_map_merge /home/deepak/task2/turtlebot3_ws/build/multirobot_map_merge/CMakeFiles/uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/multirobot_map_merge && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/map_merge /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/m-explore-ros2/map_merge /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/multirobot_map_merge /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/multirobot_map_merge /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/multirobot_map_merge/CMakeFiles/uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/uninstall.dir/depend
 

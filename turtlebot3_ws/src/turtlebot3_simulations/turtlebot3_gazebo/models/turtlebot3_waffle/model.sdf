@@ -370,7 +370,8 @@
       </inertial>
 
       <pose>0.069 -0.047 0.107 0 0 0</pose>
-      <sensor name="camera" type="camera">
+      <sensor name="camera" type="rgbd_camera">
+        <topic>camera</topic>
         <always_on>true</always_on>
         <visualize>true</visualize>
         <update_rate>30</update_rate>

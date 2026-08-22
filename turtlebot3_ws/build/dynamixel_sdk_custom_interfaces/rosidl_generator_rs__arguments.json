@@ -1,14 +1,14 @@
 {
   "package_name": "dynamixel_sdk_custom_interfaces",
-  "output_dir": "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_generator_rs/dynamixel_sdk_custom_interfaces",
+  "output_dir": "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_generator_rs/dynamixel_sdk_custom_interfaces",
   "template_dir": "/opt/ros/humble/share/rosidl_generator_rs/cmake/../resource",
   "idl_tuples": [
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces:msg/SetPosition.idl",
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces:srv/GetPosition.idl"
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces:msg/SetPosition.idl",
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces:srv/GetPosition.idl"
   ],
   "ros_interface_files": [
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/msg/SetPosition.idl",
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/srv/GetPosition.idl"
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/msg/SetPosition.idl",
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/srv/GetPosition.idl"
   ],
   "ros_interface_dependencies": [
     "builtin_interfaces:/opt/ros/humble/share/builtin_interfaces/msg/Duration.idl",
@@ -27,10 +27,10 @@
     "/opt/ros/humble/share/rosidl_generator_rs/cmake/../resource/templates/msg_rmw.rs.em",
     "/opt/ros/humble/share/rosidl_generator_rs/cmake/../resource/templates/srv_idiomatic.rs.em",
     "/opt/ros/humble/share/rosidl_generator_rs/cmake/../resource/templates/srv_rmw.rs.em",
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/msg/SetPosition.idl",
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/srv/GetPosition.idl",
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/msg/SetPosition.idl",
-    "/home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/srv/GetPosition.idl",
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/msg/SetPosition.idl",
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/srv/GetPosition.idl",
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/msg/SetPosition.idl",
+    "/home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk_custom_interfaces/rosidl_adapter/dynamixel_sdk_custom_interfaces/srv/GetPosition.idl",
     "/opt/ros/humble/share/builtin_interfaces/msg/Duration.idl",
     "/opt/ros/humble/share/builtin_interfaces/msg/Time.idl"
   ],

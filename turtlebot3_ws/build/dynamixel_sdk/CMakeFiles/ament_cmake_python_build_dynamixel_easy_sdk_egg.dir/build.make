@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepak/task2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk
+CMAKE_SOURCE_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk
+CMAKE_BINARY_DIR = /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk
 
 # Utility rule file for ament_cmake_python_build_dynamixel_easy_sdk_egg.
 
@@ -67,7 +67,7 @@ include CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/compiler_
 include CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/progress.make
 
 CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg:
-	cd /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk/ament_cmake_python/dynamixel_easy_sdk && /usr/bin/python3 setup.py egg_info
+	cd /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk/ament_cmake_python/dynamixel_easy_sdk && /usr/bin/python3 setup.py egg_info
 
 ament_cmake_python_build_dynamixel_easy_sdk_egg: CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg
 ament_cmake_python_build_dynamixel_easy_sdk_egg: CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/clean:
 .PHONY : CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/clean
 
 CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/depend:
-	cd /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepak/task2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk /home/deepak/task2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk /home/deepak/task2/turtlebot3_ws/build/dynamixel_sdk/CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/DynamixelSDK/ros/dynamixel_sdk /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/build/dynamixel_sdk/CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/ament_cmake_python_build_dynamixel_easy_sdk_egg.dir/depend
 

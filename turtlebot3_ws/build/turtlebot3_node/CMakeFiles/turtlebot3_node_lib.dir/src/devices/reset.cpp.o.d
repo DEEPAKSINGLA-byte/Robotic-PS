@@ -1,7 +1,7 @@
 CMakeFiles/turtlebot3_node_lib.dir/src/devices/reset.cpp.o: \
- /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/src/devices/reset.cpp \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/src/devices/reset.cpp \
  /usr/include/stdc-predef.h \
- /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/devices/reset.hpp \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/devices/reset.hpp \
  /usr/include/c++/11/memory /usr/include/c++/11/bits/stl_algobase.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -207,7 +207,7 @@ CMakeFiles/turtlebot3_node_lib.dir/src/devices/reset.cpp.o: \
  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h \
  /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp \
  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/message_type_support_struct.h \
- /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/devices/devices.hpp \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/devices/devices.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
  /usr/include/c++/11/csignal /usr/include/signal.h \
  /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
@@ -626,15 +626,15 @@ CMakeFiles/turtlebot3_node_lib.dir/src/devices/reset.cpp.o: \
  /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/write_preferring_read_write_lock.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp \
- /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/control_table.hpp \
- /home/deepak/task2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/dynamixel_sdk_wrapper.hpp \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/dynamixel_sdk.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_bulk_read.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/port_handler.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/packet_handler.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_handler.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_bulk_write.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_sync_read.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_sync_write.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_fast_sync_read.h \
- /home/deepak/task2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_fast_bulk_read.h
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/control_table.hpp \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/src/turtlebot3/turtlebot3_node/include/turtlebot3_node/dynamixel_sdk_wrapper.hpp \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/dynamixel_sdk.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_bulk_read.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/port_handler.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/packet_handler.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_handler.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_bulk_write.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_sync_read.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_sync_write.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_fast_sync_read.h \
+ /home/deepak/InterIIT_practice/task_2/turtlebot3_ws/install/dynamixel_sdk/include/dynamixel_sdk/group_fast_bulk_read.h
