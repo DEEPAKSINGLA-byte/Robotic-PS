@@ -1,3 +1,4 @@
+import torch
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -22,9 +23,13 @@ class YoloNode(Node):
 
         self.bridge = CvBridge()
 
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
         self.model = YOLO("yolov8x-worldv2.pt")
+        self.model.to(device)
 
         self.sam = sam_model_registry["vit_t"](checkpoint="mobile_sam.pt")
+        self.sam.to(device=device)
         self.predictor = SamPredictor(self.sam)
         self.model.set_classes([
             "person",
@@ -99,9 +104,9 @@ class YoloNode(Node):
 
         return intersection_area / union_area
     def color_similarity(self, image, box1, box2):
-        x1, y1, x2, y2 = map(int, box1)
+        x1, y1, x2, y2 = map(int, box1[:4])
         crop1=image[y1:y2,x1:x2]
-        x1, y1, x2, y2 = map(int, box2)
+        x1, y1, x2, y2 = map(int, box2[:4])
         crop2 = image[y1:y2, x1:x2]
         if crop1.size==0 or crop2.size==0:
             return 0
@@ -130,7 +135,9 @@ class YoloNode(Node):
                     if iou>iou_threshold:
                         similarity=self.color_similarity(image,current_box,other_box)
                         if similarity>color_threshold:
-                            current_box=[min(current_box[0],other_box[0]),min(current_box[1],other_box[1]),max(current_box[2],other_box[2]),max(current_box[3],other_box[3])]
+                            best_class_id = other_box[4] if other_box[5] > current_box[5] else current_box[4]
+                            best_conf = max(current_box[5], other_box[5])
+                            current_box=[min(current_box[0],other_box[0]),min(current_box[1],other_box[1]),max(current_box[2],other_box[2]),max(current_box[3],other_box[3]), best_class_id, best_conf]
                             used[j]=True
                             merged=True
                 new_boxes.append(current_box)
@@ -143,11 +150,15 @@ class YoloNode(Node):
         boxes = []
         for box in results[0].boxes:
             box_xyxy = box.xyxy[0].cpu().numpy()
+            class_id = int(box.cls[0])
+            confidence = float(box.conf[0])
             boxes.append([
                 float(box_xyxy[0]),
                 float(box_xyxy[1]),
                 float(box_xyxy[2]),
-                float(box_xyxy[3])
+                float(box_xyxy[3]),
+                class_id,
+                confidence
             ])
 
         merged_boxes = self.merge_boxes(frame, boxes, iou_threshold=0.5, color_threshold=0.7)
@@ -157,7 +168,11 @@ class YoloNode(Node):
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.predictor.set_image(rgb_frame)
 
-            for box_xyxy in merged_boxes:
+            for box_info in merged_boxes:
+                box_xyxy = box_info[:4]
+                class_id = int(box_info[4])
+                confidence = float(box_info[5])
+                
                 masks, scores, logits = self.predictor.predict(
                     box=np.array(box_xyxy),
                     multimask_output=False
@@ -171,6 +186,10 @@ class YoloNode(Node):
                 
                 x1, y1, x2, y2 = map(int, box_xyxy)
                 cv2.rectangle(visualization, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                
+                class_name = self.model.names[class_id]
+                label = f"{class_name} {confidence:.2f}"
+                cv2.putText(visualization, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
         cv2.imshow("YOLO + MobileSAM", visualization)
         cv2.waitKey(1)
