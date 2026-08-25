@@ -23,15 +23,61 @@ class YoloNode(Node):
 
         self.model = YOLO("yolov8x-worldv2.pt")
 
+        # COCO's 80 standard object classes.
+        # YOLO-World also uses these as its default offline vocabulary,
+        # but we define them explicitly here.
+        # Curated 50-class vocabulary for common indoor/household objects.
         self.model.set_classes([
-            "sofa",
-            "bed",
+            "person",
             "chair",
+            "bed",
+            "nightstand",
             "table",
-            "television",
+            "coffee table",
+            "desk",
+            "dining table",
+            "door",
+            "window",
+            "cabinet",
+            "kitchen cabinet",
             "refrigerator",
+            "sofa",
             "trash bin",
-            "door"
+            "tv",
+            "tv cabinet",
+            "vase",
+            "wardrobe",
+            "shoe rack",
+            "air conditioner",
+            "sink",
+            "microwave",
+            "oven",
+            "toaster",
+            "bottle",
+            "cup",
+            "bowl",
+            "plate",
+            "fork",
+            "knife",
+            "spoon",
+            "book",
+            "laptop",
+            "computer",
+            "keyboard",
+            "mouse",
+            "remote",
+            "cell phone",
+            "clock",
+            "backpack",
+            "handbag",
+            "suitcase",
+            "potted plant",
+            "toilet",
+            "mirror",
+            "lamp",
+            "fan",
+            "picture frame",
+            "washing machine"
         ])
 
     def image_callback(self, msg):
