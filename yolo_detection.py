@@ -11,12 +11,12 @@ import mobileclip
 import tf2_ros
 from PIL import Image as PILImage
 from scipy.spatial.transform import Rotation
+from message_filters import Subscriber, ApproximateTimeSynchronizer
 
 class YoloNode(Node):
 
     def __init__(self):
         super().__init__('yolo_node')
-        self.latest_depth=None
         self.fx=None
         self.fy=None
         self.cx=None
@@ -25,14 +25,17 @@ class YoloNode(Node):
         self.tf_listener=tf2_ros.TransformListener(self.tf_buffer,self)
         self.declare_parameter('global_frame', 'map')
         self.global_frame = self.get_parameter('global_frame').value
-        self.depth_sub=self.create_subscription(Image,'/camera/depth_image',self.depth_callback,10)
-        self.info_sub=self.create_subscription(CameraInfo,'/camera/camera_info',self.info_callback,10)
-        self.image_sub = self.create_subscription(
-            Image,
-            '/camera/image',
-            self.image_callback,
-            10
+        
+        self.rgb_sub = Subscriber(self, Image, '/camera/image')
+        self.depth_sub = Subscriber(self, Image, '/camera/depth_image')
+        self.sync = ApproximateTimeSynchronizer(
+            [self.rgb_sub, self.depth_sub],
+            queue_size=10,
+            slop=0.05
         )
+        self.sync.registerCallback(self.synced_callback)
+        
+        self.info_sub=self.create_subscription(CameraInfo,'/camera/camera_info',self.info_callback,10)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.clip_checkpoint = "/home/deepak/InterIIT_practice/task_2/mobileclip_s2.pt" # Update this to your MobileCLIP checkpoint path
@@ -104,8 +107,6 @@ class YoloNode(Node):
             "picture frame",
             "washing machine"
         ])
-    def depth_callback(self,msg):
-        self.latest_depth=self.bridge.imgmsg_to_cv2(msg,desired_encoding='passthrough')
     def transform_points_to_global(self, points_camera, timestamp):
         try:
             transform = self.tf_buffer.lookup_transform(
@@ -132,15 +133,13 @@ class YoloNode(Node):
 
         points_global = points_camera @ R.T + translation
         return points_global
-    def mask_to_camera_points(self,mask):
-        if self.latest_depth is None:
-            return None
+    def mask_to_camera_points(self, mask, depth):
         if self.fx is None:
             return None
         ys,xs=np.where(mask)
-        depth_value=self.latest_depth[ys,xs]
+        depth_value=depth[ys,xs]
         
-        if self.latest_depth.dtype == np.uint16:
+        if depth.dtype == np.uint16:
             depth_value = depth_value.astype(np.float32) / 1000.0
             
         valid=(depth_value>0) & np.isfinite(depth_value)
@@ -231,8 +230,14 @@ class YoloNode(Node):
                 new_boxes.append(current_box)
             boxes=new_boxes
         return boxes
-    def image_callback(self, msg):
-        frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+    def synced_callback(self, rgb_msg, depth_msg):
+        rgb_time = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
+        depth_time = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
+        print(f"RGB: {rgb_time:.6f} | Depth: {depth_time:.6f} | Diff: {abs(rgb_time-depth_time):.6f}s")
+        
+        frame = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
+        depth = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
+        
         results = self.model(frame)
 
         boxes = []
@@ -269,14 +274,14 @@ class YoloNode(Node):
                     multimask_output=False
                 )
                 mask = masks[0]
-                points_camera = self.mask_to_camera_points(mask)
+                points_camera = self.mask_to_camera_points(mask, depth)
                 
                 class_name = self.model.names[class_id]
                 
                 if points_camera is not None and points_camera.shape[0] > 0:
                     points_global = self.transform_points_to_global(
                         points_camera,
-                        msg.header.stamp
+                        rgb_msg.header.stamp
                     )
                     if points_global is not None:
                         print(
