@@ -7,23 +7,27 @@ from ultralytics import YOLO
 from mobile_sam import sam_model_registry, SamPredictor
 import numpy as np
 import cv2
+from ultralytics import FastSAM
 
 
 class YoloNode(Node):
 
     def __init__(self):
         super().__init__('yolo_node')
-
         self.image_sub = self.create_subscription(
             Image,
             '/camera/image',
             self.image_callback,
             10
         )
+        self.mask_pub = self.create_publisher(Image, '/fused_segmentation', 10)
 
         self.bridge = CvBridge()
 
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        self.fastsam = FastSAM("FastSAM-s.pt")
+        self.fastsam.to(device)
 
         self.model = YOLO("yolov8x-worldv2.pt")
         self.model.to(device)
@@ -131,22 +135,58 @@ class YoloNode(Node):
                     if used[j]:
                         continue
                     other_box=boxes[j]
+                    if current_box[4] != other_box[4]:
+                        continue
                     iou=self.calculate_iou(current_box,other_box)
                     if iou>iou_threshold:
                         similarity=self.color_similarity(image,current_box,other_box)
                         if similarity>color_threshold:
-                            best_class_id = other_box[4] if other_box[5] > current_box[5] else current_box[4]
                             best_conf = max(current_box[5], other_box[5])
-                            current_box=[min(current_box[0],other_box[0]),min(current_box[1],other_box[1]),max(current_box[2],other_box[2]),max(current_box[3],other_box[3]), best_class_id, best_conf]
+                            current_box=[min(current_box[0],other_box[0]),min(current_box[1],other_box[1]),max(current_box[2],other_box[2]),max(current_box[3],other_box[3]), current_box[4], best_conf]
                             used[j]=True
                             merged=True
                 new_boxes.append(current_box)
             boxes=new_boxes
         return boxes
+    def calculate_mask_iou(self, mask1, mask2):
+        intersection = np.logical_and(mask1, mask2).sum()
+        union = np.logical_or(mask1, mask2).sum()
+
+        if union == 0:
+            return 0.0
+
+        return intersection / union
+
+    def fuse_masks(self, mobile_sam_masks, fastsam_masks, threshold=0.5):
+        final_masks = list(mobile_sam_masks)
+        
+        combined_mobile_mask = None
+        if mobile_sam_masks:
+            combined_mobile_mask = np.any([m['mask'] for m in mobile_sam_masks], axis=0)
+
+        for fast_mask_dict in fastsam_masks:
+            fast_mask = fast_mask_dict['mask']
+            keep_fast_mask = True
+            for mobile_mask_dict in mobile_sam_masks:
+                iou = self.calculate_mask_iou(fast_mask, mobile_mask_dict['mask'])
+                if iou > threshold:
+                    keep_fast_mask = False
+                    break
+
+            if keep_fast_mask:
+                if combined_mobile_mask is not None:
+                    fast_mask = fast_mask & ~combined_mobile_mask
+                
+                if fast_mask.sum() > 100:
+                    fast_mask_dict['mask'] = fast_mask
+                    final_masks.append(fast_mask_dict)
+
+        return final_masks
+
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         results = self.model(frame)
-
+        
         boxes = []
         for box in results[0].boxes:
             box_xyxy = box.xyxy[0].cpu().numpy()
@@ -163,36 +203,104 @@ class YoloNode(Node):
 
         merged_boxes = self.merge_boxes(frame, boxes, iou_threshold=0.5, color_threshold=0.7)
 
-        visualization = frame.copy()
+        mobile_sam_masks = []
         if len(merged_boxes) > 0:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.predictor.set_image(rgb_frame)
 
             for box_info in merged_boxes:
                 box_xyxy = box_info[:4]
-                class_id = int(box_info[4])
-                confidence = float(box_info[5])
-                
+                class_id = box_info[4]
+                confidence = box_info[5]
                 masks, scores, logits = self.predictor.predict(
                     box=np.array(box_xyxy),
                     multimask_output=False
                 )
                 mask = masks[0]
+                if mask.shape != frame.shape[:2]:
+                    mask = cv2.resize(mask.astype(np.uint8), (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST).astype(bool)
+                mobile_sam_masks.append({
+                    'mask': mask,
+                    'class_id': class_id,
+                    'confidence': confidence
+                })
 
-                overlay = visualization.copy()
-                overlay[mask] = (0, 255, 0)
+        fastsam_masks = []
+        total_mask_area = 0
+        if mobile_sam_masks:
+            combined_mobile_mask = np.any([m['mask'] for m in mobile_sam_masks], axis=0)
+            total_mask_area = combined_mobile_mask.sum()
+            
+        image_area = frame.shape[0] * frame.shape[1]
+        
+        if len(merged_boxes) < 5 and (total_mask_area / image_area) < 0.5:
+            fastsam_results = self.fastsam(
+                frame,
+                retina_masks=True,
+                imgsz=1024,
+                conf=0.2,
+                iou=0.9,
+                verbose=False
+            )
 
-                visualization = cv2.addWeighted(visualization, 0.7, overlay, 0.3, 0)
+            if fastsam_results[0].masks is not None:
+                for mask in fastsam_results[0].masks.data:
+                    mask = mask.cpu().numpy().astype(bool)
+                    if mask.shape != frame.shape[:2]:
+                        mask = cv2.resize(mask.astype(np.uint8), (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST).astype(bool)
+                    fastsam_masks.append({
+                        'mask': mask,
+                        'class_id': -1,
+                        'confidence': 0.0
+                    })
+
+        final_masks = self.fuse_masks(
+            mobile_sam_masks,
+            fastsam_masks,
+            threshold=0.5
+        )
+
+        visualization = frame.copy()
+        
+        np.random.seed(42)
+        class_colors = {i: tuple(np.random.randint(0, 255, 3).tolist()) for i in range(-1, 100)}
+        
+        for mask_dict in final_masks:
+            mask = mask_dict['mask']
+            class_id = mask_dict['class_id']
+            conf = mask_dict['confidence']
+            
+            color = class_colors.get(class_id, (0, 255, 0))
+            if class_id == -1:
+                color = (0, 0, 255)
                 
-                x1, y1, x2, y2 = map(int, box_xyxy)
-                cv2.rectangle(visualization, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                
-                class_name = self.model.names[class_id]
-                label = f"{class_name} {confidence:.2f}"
-                cv2.putText(visualization, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+            overlay = visualization.copy()
+            overlay[mask] = color
+            visualization = cv2.addWeighted(
+                visualization,
+                0.7,
+                overlay,
+                0.3,
+                0
+            )
+            
+            y, x = np.where(mask)
+            if len(y) > 0:
+                cy, cx = int(np.mean(y)), int(np.mean(x))
+                if class_id != -1 and hasattr(self.model, 'names'):
+                    label_name = self.model.names.get(class_id, f"class_{class_id}")
+                    label = f"{label_name} ({conf:.2f})"
+                else:
+                    label = "Unknown"
+                cv2.putText(visualization, label, (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-        cv2.imshow("YOLO + MobileSAM", visualization)
+        cv2.imshow("Fused Segmentation", visualization)
         cv2.waitKey(1)
+        
+        vis_msg = self.bridge.cv2_to_imgmsg(visualization)
+        vis_msg.encoding = "bgr8"
+        vis_msg.header = msg.header
+        self.mask_pub.publish(vis_msg)
 
 
 def main(args=None):
@@ -200,10 +308,15 @@ def main(args=None):
 
     node = YoloNode()
 
-    rclpy.spin(node)
-
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        cv2.destroyAllWindows()
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
