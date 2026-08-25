@@ -10,6 +10,7 @@ import cv2
 import mobileclip 
 import tf2_ros
 from PIL import Image as PILImage
+from scipy.spatial.transform import Rotation
 
 class YoloNode(Node):
 
@@ -20,6 +21,10 @@ class YoloNode(Node):
         self.fy=None
         self.cx=None
         self.cy=None
+        self.tf_buffer=tf2_ros.Buffer()
+        self.tf_listener=tf2_ros.TransformListener(self.tf_buffer,self)
+        self.declare_parameter('global_frame', 'map')
+        self.global_frame = self.get_parameter('global_frame').value
         self.depth_sub=self.create_subscription(Image,'/camera/depth_image',self.depth_callback,10)
         self.info_sub=self.create_subscription(CameraInfo,'/camera/camera_info',self.info_callback,10)
         self.image_sub = self.create_subscription(
@@ -33,7 +38,7 @@ class YoloNode(Node):
         self.clip_checkpoint = "/home/deepak/InterIIT_practice/task_2/mobileclip_s2.pt" # Update this to your MobileCLIP checkpoint path
         self.clip_model, _, self.clip_preprocess = mobileclip.create_model_and_transforms(
             "mobileclip_s2",
-            pretrained=None, # Set this back to self.clip_checkpoint once you download the correct weights
+            pretrained=self.clip_checkpoint, # Use the actual downloaded checkpoint
             device=self.device
         )
         self.clip_model.eval()
@@ -101,6 +106,32 @@ class YoloNode(Node):
         ])
     def depth_callback(self,msg):
         self.latest_depth=self.bridge.imgmsg_to_cv2(msg,desired_encoding='passthrough')
+    def transform_points_to_global(self, points_camera, timestamp):
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                self.global_frame,
+                'camera_link',
+                timestamp
+            )
+        except Exception as e:
+            self.get_logger().warn(f"TF lookup failed: {e}")
+            return None
+
+        tx = transform.transform.translation.x
+        ty = transform.transform.translation.y
+        tz = transform.transform.translation.z
+        translation = np.array([tx, ty, tz])
+
+        qx = transform.transform.rotation.x
+        qy = transform.transform.rotation.y
+        qz = transform.transform.rotation.z
+        qw = transform.transform.rotation.w
+
+        rotation = Rotation.from_quat([qx, qy, qz, qw])
+        R = rotation.as_matrix()
+
+        points_global = points_camera @ R.T + translation
+        return points_global
     def mask_to_camera_points(self,mask):
         if self.latest_depth is None:
             return None
@@ -108,6 +139,10 @@ class YoloNode(Node):
             return None
         ys,xs=np.where(mask)
         depth_value=self.latest_depth[ys,xs]
+        
+        if self.latest_depth.dtype == np.uint16:
+            depth_value = depth_value.astype(np.float32) / 1000.0
+            
         valid=(depth_value>0) & np.isfinite(depth_value)
         xs=xs[valid]
         ys=ys[valid]
@@ -220,6 +255,8 @@ class YoloNode(Node):
         if len(merged_boxes) > 0:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.predictor.set_image(rgb_frame)
+            
+            semantic_map_objects = []
 
             for box_info in merged_boxes:
                 box_xyxy = box_info[:4]
@@ -235,6 +272,18 @@ class YoloNode(Node):
                 points_camera = self.mask_to_camera_points(mask)
                 
                 class_name = self.model.names[class_id]
+                
+                if points_camera is not None and points_camera.shape[0] > 0:
+                    points_global = self.transform_points_to_global(
+                        points_camera,
+                        msg.header.stamp
+                    )
+                    if points_global is not None:
+                        print(
+                            f"{class_name}: "
+                            f"camera points = {points_camera.shape}, "
+                            f"global points = {points_global.shape}"
+                        )
                 overlay = visualization.copy()
                 overlay[mask] = (0, 255, 0)
 
@@ -244,9 +293,20 @@ class YoloNode(Node):
                 cv2.rectangle(visualization, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
                 feature=self.get_clip_features(frame,box_xyxy,class_name)
+                
+                points_global_safe = points_global if 'points_global' in locals() else None
+                semantic_map_objects.append({
+                    'class_name': class_name,
+                    'confidence': confidence,
+                    'mask': mask,
+                    'points_global': points_global_safe,
+                    'clip_feature': feature
+                })
 
                 label = f"{class_name} {confidence:.2f}"
                 cv2.putText(visualization, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+            
+            # Here you can process or publish `semantic_map_objects` for the downstream SLAM/mapping node
 
         cv2.imshow("YOLO + MobileSAM", visualization)
         cv2.waitKey(1)
