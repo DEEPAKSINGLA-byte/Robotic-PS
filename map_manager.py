@@ -10,7 +10,6 @@ class MapManager:
         self.tracker = Tracker()
         self.log_file = "tracking_logs.json"
         
-        # Initialize an empty list in the JSON file
         with open(self.log_file, "w") as f:
             json.dump([], f)
 

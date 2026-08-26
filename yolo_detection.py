@@ -198,9 +198,13 @@ class YoloNode(Node):
 
         boxes = []
         for box in results[0].boxes:
+            confidence = float(box.conf[0])
+            
+            if confidence < 0.55:
+                continue
+                
             box_xyxy = box.xyxy[0].cpu().numpy()
             class_id = int(box.cls[0])
-            confidence = float(box.conf[0])
             boxes.append([
                 float(box_xyxy[0]),
                 float(box_xyxy[1]),
