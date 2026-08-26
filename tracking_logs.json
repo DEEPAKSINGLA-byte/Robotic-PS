@@ -2,7 +2,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2945,
+            "points_count": 3127,
             "feature_shape": [
                 1,
                 512
@@ -15,7 +15,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3048,
+            "points_count": 3068,
             "feature_shape": [
                 1,
                 512
@@ -28,7 +28,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3035,
+            "points_count": 3503,
             "feature_shape": [
                 1,
                 512
@@ -41,7 +41,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3273,
+            "points_count": 3201,
             "feature_shape": [
                 1,
                 512
@@ -54,85 +54,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3427,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3429,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3267,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3248,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3382,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3381,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3273,
+            "points_count": 3336,
             "feature_shape": [
                 1,
                 512
@@ -145,7 +67,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 1422,
+            "points_count": 1481,
             "feature_shape": [
                 1,
                 512
@@ -158,72 +80,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3391,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3719,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1703,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 1,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3425,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 0,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2025,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 1,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3538,
+            "points_count": 3696,
             "feature_shape": [
                 1,
                 512
@@ -235,21 +92,8 @@
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2346,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 1,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
             "class_name": "lamp",
-            "points_count": 3432,
+            "points_count": 3369,
             "feature_shape": [
                 1,
                 512
@@ -262,33 +106,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3446,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2923,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 1,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3412,
+            "points_count": 3473,
             "feature_shape": [
                 1,
                 512
@@ -301,7 +119,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3424,
+            "points_count": 3044,
             "feature_shape": [
                 1,
                 512
@@ -314,98 +132,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3365,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3434,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3406,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2959,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2951,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2858,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2952,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 2,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2748,
+            "points_count": 2901,
             "feature_shape": [
                 1,
                 512
@@ -418,7 +145,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2650,
+            "points_count": 2799,
             "feature_shape": [
                 1,
                 512
@@ -431,7 +158,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2808,
+            "points_count": 2620,
             "feature_shape": [
                 1,
                 512
@@ -444,46 +171,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2651,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2783,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2742,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2941,
+            "points_count": 2756,
             "feature_shape": [
                 1,
                 512
@@ -496,7 +184,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2594,
+            "points_count": 2563,
             "feature_shape": [
                 1,
                 512
@@ -509,40 +197,14 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2864,
+            "points_count": 3197,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2532,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3035,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 3,
+        "action": "created_new",
+        "object_id": 5,
         "object_class": "lamp"
     },
     {
@@ -561,72 +223,20 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2838,
+            "points_count": 2907,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2469,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3001,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2960,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 3,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2874,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
         "object_id": 5,
         "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2407,
+            "points_count": 2475,
             "feature_shape": [
                 1,
                 512
@@ -652,7 +262,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2438,
+            "points_count": 2464,
             "feature_shape": [
                 1,
                 512
@@ -665,111 +275,7 @@
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 2956,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 5,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2465,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2918,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 5,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2435,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2899,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 5,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2383,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2758,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 5,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2322,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "person",
-            "points_count": 2045,
+            "points_count": 2941,
             "feature_shape": [
                 1,
                 512
@@ -777,25 +283,12 @@
         },
         "action": "created_new",
         "object_id": 6,
-        "object_class": "person"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2669,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 5,
         "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2350,
+            "points_count": 2289,
             "feature_shape": [
                 1,
                 512
@@ -807,34 +300,60 @@
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2357,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
             "class_name": "lamp",
-            "points_count": 2842,
+            "points_count": 2780,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 5,
+        "object_id": 6,
         "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2317,
+            "points_count": 2235,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 7,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 2761,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 6,
+        "object_class": "lamp"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 2728,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 6,
+        "object_class": "lamp"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 2276,
             "feature_shape": [
                 1,
                 512
@@ -847,33 +366,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2346,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 4,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2777,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 5,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2756,
+            "points_count": 2256,
             "feature_shape": [
                 1,
                 512
@@ -881,12 +374,12 @@
         },
         "action": "created_new",
         "object_id": 8,
-        "object_class": "lamp"
+        "object_class": "chair"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2290,
+            "class_name": "lamp",
+            "points_count": 3150,
             "feature_shape": [
                 1,
                 512
@@ -894,233 +387,12 @@
         },
         "action": "created_new",
         "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2716,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
         "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2298,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2675,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2284,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 7,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2291,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2853,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2198,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 7,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 2973,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2259,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3072,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2181,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 7,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3013,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3099,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2291,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3252,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2285,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3237,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 8,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2069,
+            "points_count": 2025,
             "feature_shape": [
                 1,
                 512
@@ -1133,7 +405,20 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2271,
+            "points_count": 2313,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 8,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 3209,
             "feature_shape": [
                 1,
                 512
@@ -1141,111 +426,7 @@
         },
         "action": "matched_existing",
         "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3164,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 11,
         "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1943,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 10,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2351,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3094,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1880,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 10,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2339,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3192,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1901,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 10,
-        "object_class": "chair"
     },
     {
         "observation": {
@@ -1257,26 +438,13 @@
             ]
         },
         "action": "matched_existing",
-        "object_id": 9,
+        "object_id": 8,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3182,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2345,
+            "points_count": 3155,
             "feature_shape": [
                 1,
                 512
@@ -1284,136 +452,6 @@
         },
         "action": "matched_existing",
         "object_id": 9,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1872,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 10,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3151,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2351,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1867,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 10,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3178,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2363,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3238,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3271,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2408,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3355,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 11,
         "object_class": "lamp"
     },
     {
@@ -1426,13 +464,52 @@
             ]
         },
         "action": "matched_existing",
-        "object_id": 12,
+        "object_id": 8,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3252,
+            "points_count": 3204,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 11,
+        "object_class": "lamp"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 608,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 12,
+        "object_class": "picture frame"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 2411,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 13,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 3445,
             "feature_shape": [
                 1,
                 512
@@ -1445,20 +522,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 1890,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3499,
+            "points_count": 1859,
             "feature_shape": [
                 1,
                 512
@@ -1466,38 +530,12 @@
         },
         "action": "created_new",
         "object_id": 14,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2418,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 1833,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3574,
+            "points_count": 1888,
             "feature_shape": [
                 1,
                 512
@@ -1505,51 +543,25 @@
         },
         "action": "matched_existing",
         "object_id": 14,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2430,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1897,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2494,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3568,
+            "points_count": 3699,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 11,
+        "object_class": "lamp"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 1810,
             "feature_shape": [
                 1,
                 512
@@ -1557,168 +569,25 @@
         },
         "action": "matched_existing",
         "object_id": 14,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1856,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "lamp",
-            "points_count": 3661,
+            "points_count": 3871,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 14,
+        "object_id": 11,
         "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2487,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1758,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2504,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3746,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 14,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3865,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 14,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1848,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1874,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "lamp",
-            "points_count": 3929,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 14,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2580,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 12,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1721,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2596,
+            "points_count": 2564,
             "feature_shape": [
                 1,
                 512
@@ -1730,8 +599,8 @@
     },
     {
         "observation": {
-            "class_name": "lamp",
-            "points_count": 3866,
+            "class_name": "chair",
+            "points_count": 1836,
             "feature_shape": [
                 1,
                 512
@@ -1739,12 +608,51 @@
         },
         "action": "matched_existing",
         "object_id": 14,
-        "object_class": "lamp"
+        "object_class": "chair"
     },
     {
         "observation": {
-            "class_name": "lamp",
-            "points_count": 2906,
+            "class_name": "chair",
+            "points_count": 2655,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 15,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 1824,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 14,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 2745,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 15,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 1809,
             "feature_shape": [
                 1,
                 512
@@ -1752,77 +660,12 @@
         },
         "action": "created_new",
         "object_id": 16,
-        "object_class": "lamp"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1825,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2650,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 15,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2758,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 15,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1773,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 13,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2890,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 15,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1868,
+            "points_count": 3047,
             "feature_shape": [
                 1,
                 512
@@ -1835,7 +678,20 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 1805,
+            "points_count": 1862,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 16,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 3190,
             "feature_shape": [
                 1,
                 512
@@ -1848,33 +704,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 3037,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 15,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 1844,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 17,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2024,
+            "points_count": 1961,
             "feature_shape": [
                 1,
                 512
@@ -1887,7 +717,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2027,
+            "points_count": 2087,
             "feature_shape": [
                 1,
                 512
@@ -1900,7 +730,20 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2137,
+            "points_count": 2163,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 18,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 2187,
             "feature_shape": [
                 1,
                 512
@@ -1913,7 +756,7 @@
     {
         "observation": {
             "class_name": "cabinet",
-            "points_count": 12764,
+            "points_count": 13153,
             "feature_shape": [
                 1,
                 512
@@ -1925,21 +768,8 @@
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2242,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 18,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
             "class_name": "cabinet",
-            "points_count": 14725,
+            "points_count": 13895,
             "feature_shape": [
                 1,
                 512
@@ -1952,7 +782,7 @@
     {
         "observation": {
             "class_name": "cabinet",
-            "points_count": 13337,
+            "points_count": 13197,
             "feature_shape": [
                 1,
                 512
@@ -1965,7 +795,7 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2334,
+            "points_count": 2368,
             "feature_shape": [
                 1,
                 512
@@ -1977,21 +807,8 @@
     },
     {
         "observation": {
-            "class_name": "cabinet",
-            "points_count": 12527,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 19,
-        "object_class": "cabinet"
-    },
-    {
-        "observation": {
             "class_name": "chair",
-            "points_count": 1894,
+            "points_count": 2293,
             "feature_shape": [
                 1,
                 512
@@ -2004,7 +821,7 @@
     {
         "observation": {
             "class_name": "cabinet",
-            "points_count": 12160,
+            "points_count": 12821,
             "feature_shape": [
                 1,
                 512
@@ -2017,7 +834,33 @@
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 1260,
+            "points_count": 2448,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 20,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "cabinet",
+            "points_count": 12454,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 19,
+        "object_class": "cabinet"
+    },
+    {
+        "observation": {
+            "class_name": "chair",
+            "points_count": 1128,
             "feature_shape": [
                 1,
                 512
@@ -2030,7 +873,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 10459,
+            "points_count": 11071,
             "feature_shape": [
                 1,
                 512
@@ -2042,21 +885,8 @@
     },
     {
         "observation": {
-            "class_name": "bed",
-            "points_count": 16089,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
             "class_name": "cabinet",
-            "points_count": 11492,
+            "points_count": 11527,
             "feature_shape": [
                 1,
                 512
@@ -2069,7 +899,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 12285,
+            "points_count": 17147,
             "feature_shape": [
                 1,
                 512
@@ -2082,33 +912,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 12299,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "cabinet",
-            "points_count": 11469,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 22,
-        "object_class": "cabinet"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12319,
+            "points_count": 14459,
             "feature_shape": [
                 1,
                 512
@@ -2121,202 +925,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 12351,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12317,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12300,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12335,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12332,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12315,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12310,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "cabinet",
-            "points_count": 11485,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 22,
-        "object_class": "cabinet"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12330,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12283,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12349,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12311,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "cabinet",
-            "points_count": 11481,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 22,
-        "object_class": "cabinet"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 12363,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 16655,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 17510,
+            "points_count": 16055,
             "feature_shape": [
                 1,
                 512
@@ -2329,7 +938,7 @@
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 11532,
+            "points_count": 11067,
             "feature_shape": [
                 1,
                 512
@@ -2342,7 +951,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 18326,
+            "points_count": 25030,
             "feature_shape": [
                 1,
                 512
@@ -2355,7 +964,7 @@
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 11327,
+            "points_count": 10912,
             "feature_shape": [
                 1,
                 512
@@ -2368,7 +977,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 19269,
+            "points_count": 26650,
             "feature_shape": [
                 1,
                 512
@@ -2381,20 +990,7 @@
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 11287,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 11168,
+            "points_count": 10723,
             "feature_shape": [
                 1,
                 512
@@ -2407,20 +1003,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 20973,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 15856,
+            "points_count": 29641,
             "feature_shape": [
                 1,
                 512
@@ -2433,7 +1016,7 @@
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 11079,
+            "points_count": 10727,
             "feature_shape": [
                 1,
                 512
@@ -2446,59 +1029,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 16245,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10982,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10846,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 16340,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "cabinet",
-            "points_count": 15569,
+            "points_count": 31042,
             "feature_shape": [
                 1,
                 512
@@ -2506,25 +1037,12 @@
         },
         "action": "created_new",
         "object_id": 24,
-        "object_class": "cabinet"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 16706,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
         "object_class": "bed"
     },
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 10950,
+            "points_count": 10853,
             "feature_shape": [
                 1,
                 512
@@ -2533,206 +1051,50 @@
         "action": "matched_existing",
         "object_id": 23,
         "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 16901,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10916,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 17426,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10891,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 26339,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 21,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10760,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 27249,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 25,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10734,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 28276,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 25,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10592,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 23,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 29251,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 25,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10603,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 26,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 30030,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 25,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 10776,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 26,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 32111,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 25,
-        "object_class": "bed"
     },
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 731,
+            "points_count": 1373,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 25,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 33378,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 24,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
+            "class_name": "nightstand",
+            "points_count": 10873,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 26,
+        "object_class": "nightstand"
+    },
+    {
+        "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1729,
             "feature_shape": [
                 1,
                 512
@@ -2744,8 +1106,21 @@
     },
     {
         "observation": {
+            "class_name": "bed",
+            "points_count": 35308,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 24,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
             "class_name": "nightstand",
-            "points_count": 10779,
+            "points_count": 11134,
             "feature_shape": [
                 1,
                 512
@@ -2758,7 +1133,7 @@
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 1728,
+            "points_count": 1664,
             "feature_shape": [
                 1,
                 512
@@ -2771,33 +1146,20 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 34311,
+            "points_count": 34804,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 25,
+        "object_id": 24,
         "object_class": "bed"
     },
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 10996,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 26,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1715,
+            "points_count": 976,
             "feature_shape": [
                 1,
                 512
@@ -2805,25 +1167,12 @@
         },
         "action": "created_new",
         "object_id": 28,
-        "object_class": "air conditioner"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 35526,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 25,
-        "object_class": "bed"
+        "object_class": "nightstand"
     },
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 11135,
+            "points_count": 11355,
             "feature_shape": [
                 1,
                 512
@@ -2836,33 +1185,7 @@
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 1635,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 28,
-        "object_class": "air conditioner"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 34661,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 25,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 11215,
+            "points_count": 1545,
             "feature_shape": [
                 1,
                 512
@@ -2870,25 +1193,12 @@
         },
         "action": "created_new",
         "object_id": 29,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1590,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 28,
         "object_class": "air conditioner"
     },
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 33955,
+            "points_count": 33633,
             "feature_shape": [
                 1,
                 512
@@ -2900,8 +1210,8 @@
     },
     {
         "observation": {
-            "class_name": "nightstand",
-            "points_count": 872,
+            "class_name": "trash bin",
+            "points_count": 687,
             "feature_shape": [
                 1,
                 512
@@ -2909,25 +1219,12 @@
         },
         "action": "created_new",
         "object_id": 31,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 11476,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 29,
-        "object_class": "nightstand"
+        "object_class": "trash bin"
     },
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 1438,
+            "points_count": 1464,
             "feature_shape": [
                 1,
                 512
@@ -2940,7 +1237,33 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 32705,
+            "points_count": 32992,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 30,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
+            "class_name": "trash bin",
+            "points_count": 800,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 31,
+        "object_class": "trash bin"
+    },
+    {
+        "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1409,
             "feature_shape": [
                 1,
                 512
@@ -2948,12 +1271,25 @@
         },
         "action": "created_new",
         "object_id": 33,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 32672,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 30,
         "object_class": "bed"
     },
     {
         "observation": {
             "class_name": "trash bin",
-            "points_count": 778,
+            "points_count": 726,
             "feature_shape": [
                 1,
                 512
@@ -2965,8 +1301,47 @@
     },
     {
         "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1366,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 33,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 32626,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 30,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
+            "class_name": "trash bin",
+            "points_count": 711,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 34,
+        "object_class": "trash bin"
+    },
+    {
+        "observation": {
             "class_name": "nightstand",
-            "points_count": 886,
+            "points_count": 932,
             "feature_shape": [
                 1,
                 512
@@ -2978,8 +1353,8 @@
     },
     {
         "observation": {
-            "class_name": "nightstand",
-            "points_count": 12574,
+            "class_name": "cabinet",
+            "points_count": 13883,
             "feature_shape": [
                 1,
                 512
@@ -2987,25 +1362,12 @@
         },
         "action": "created_new",
         "object_id": 36,
-        "object_class": "nightstand"
+        "object_class": "cabinet"
     },
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 1395,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 32,
-        "object_class": "air conditioner"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 32655,
+            "points_count": 1345,
             "feature_shape": [
                 1,
                 512
@@ -3013,12 +1375,25 @@
         },
         "action": "matched_existing",
         "object_id": 33,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 33350,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 30,
         "object_class": "bed"
     },
     {
         "observation": {
             "class_name": "trash bin",
-            "points_count": 745,
+            "points_count": 698,
             "feature_shape": [
                 1,
                 512
@@ -3031,59 +1406,7 @@
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 873,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 35,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1368,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 32,
-        "object_class": "air conditioner"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 32711,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 33,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "trash bin",
-            "points_count": 723,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 34,
-        "object_class": "trash bin"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 756,
+            "points_count": 854,
             "feature_shape": [
                 1,
                 512
@@ -3096,7 +1419,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 34851,
+            "points_count": 33035,
             "feature_shape": [
                 1,
                 512
@@ -3109,7 +1432,7 @@
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 1311,
+            "points_count": 1353,
             "feature_shape": [
                 1,
                 512
@@ -3121,8 +1444,47 @@
     },
     {
         "observation": {
-            "class_name": "person",
-            "points_count": 12882,
+            "class_name": "nightstand",
+            "points_count": 919,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 35,
+        "object_class": "nightstand"
+    },
+    {
+        "observation": {
+            "class_name": "trash bin",
+            "points_count": 673,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 34,
+        "object_class": "trash bin"
+    },
+    {
+        "observation": {
+            "class_name": "cabinet",
+            "points_count": 11914,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 36,
+        "object_class": "cabinet"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 34697,
             "feature_shape": [
                 1,
                 512
@@ -3130,12 +1492,12 @@
         },
         "action": "created_new",
         "object_id": 39,
-        "object_class": "person"
+        "object_class": "bed"
     },
     {
         "observation": {
-            "class_name": "trash bin",
-            "points_count": 633,
+            "class_name": "air conditioner",
+            "points_count": 1326,
             "feature_shape": [
                 1,
                 512
@@ -3143,12 +1505,12 @@
         },
         "action": "created_new",
         "object_id": 40,
-        "object_class": "trash bin"
+        "object_class": "air conditioner"
     },
     {
         "observation": {
-            "class_name": "nightstand",
-            "points_count": 820,
+            "class_name": "person",
+            "points_count": 13021,
             "feature_shape": [
                 1,
                 512
@@ -3156,12 +1518,12 @@
         },
         "action": "created_new",
         "object_id": 41,
-        "object_class": "nightstand"
+        "object_class": "person"
     },
     {
         "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1306,
+            "class_name": "trash bin",
+            "points_count": 620,
             "feature_shape": [
                 1,
                 512
@@ -3169,12 +1531,12 @@
         },
         "action": "created_new",
         "object_id": 42,
-        "object_class": "air conditioner"
+        "object_class": "trash bin"
     },
     {
         "observation": {
-            "class_name": "picture frame",
-            "points_count": 1925,
+            "class_name": "nightstand",
+            "points_count": 676,
             "feature_shape": [
                 1,
                 512
@@ -3182,12 +1544,12 @@
         },
         "action": "created_new",
         "object_id": 43,
-        "object_class": "picture frame"
+        "object_class": "nightstand"
     },
     {
         "observation": {
-            "class_name": "nightstand",
-            "points_count": 708,
+            "class_name": "air conditioner",
+            "points_count": 1307,
             "feature_shape": [
                 1,
                 512
@@ -3195,12 +1557,25 @@
         },
         "action": "created_new",
         "object_id": 44,
-        "object_class": "nightstand"
+        "object_class": "air conditioner"
     },
     {
         "observation": {
-            "class_name": "trash bin",
-            "points_count": 582,
+            "class_name": "bed",
+            "points_count": 36257,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 39,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
+            "class_name": "nightstand",
+            "points_count": 707,
             "feature_shape": [
                 1,
                 512
@@ -3208,25 +1583,12 @@
         },
         "action": "created_new",
         "object_id": 45,
-        "object_class": "trash bin"
+        "object_class": "nightstand"
     },
     {
         "observation": {
-            "class_name": "bed",
-            "points_count": 36444,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 37,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1339,
+            "class_name": "picture frame",
+            "points_count": 2080,
             "feature_shape": [
                 1,
                 512
@@ -3234,12 +1596,12 @@
         },
         "action": "created_new",
         "object_id": 46,
-        "object_class": "air conditioner"
+        "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "picture frame",
-            "points_count": 5941,
+            "class_name": "trash bin",
+            "points_count": 589,
             "feature_shape": [
                 1,
                 512
@@ -3247,51 +1609,12 @@
         },
         "action": "created_new",
         "object_id": 47,
-        "object_class": "picture frame"
-    },
-    {
-        "observation": {
-            "class_name": "nightstand",
-            "points_count": 718,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 44,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "bed",
-            "points_count": 29743,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 37,
-        "object_class": "bed"
-    },
-    {
-        "observation": {
-            "class_name": "trash bin",
-            "points_count": 586,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 45,
         "object_class": "trash bin"
     },
     {
         "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1419,
+            "class_name": "person",
+            "points_count": 2563,
             "feature_shape": [
                 1,
                 512
@@ -3299,12 +1622,38 @@
         },
         "action": "created_new",
         "object_id": 48,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1342,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 49,
         "object_class": "air conditioner"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 5252,
+            "points_count": 5948,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 50,
+        "object_class": "picture frame"
+    },
+    {
+        "observation": {
+            "class_name": "trash bin",
+            "points_count": 589,
             "feature_shape": [
                 1,
                 512
@@ -3312,6 +1661,58 @@
         },
         "action": "matched_existing",
         "object_id": 47,
+        "object_class": "trash bin"
+    },
+    {
+        "observation": {
+            "class_name": "nightstand",
+            "points_count": 794,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 45,
+        "object_class": "nightstand"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 30928,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 39,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1358,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 49,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 5713,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 50,
         "object_class": "picture frame"
     },
     {
@@ -3323,40 +1724,40 @@
                 512
             ]
         },
-        "action": "created_new",
-        "object_id": 49,
+        "action": "matched_existing",
+        "object_id": 47,
         "object_class": "trash bin"
     },
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 22594,
+            "points_count": 26292,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 37,
+        "object_id": 39,
         "object_class": "bed"
     },
     {
         "observation": {
             "class_name": "nightstand",
-            "points_count": 728,
+            "points_count": 669,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "created_new",
-        "object_id": 50,
+        "action": "matched_existing",
+        "object_id": 45,
         "object_class": "nightstand"
     },
     {
         "observation": {
             "class_name": "air conditioner",
-            "points_count": 1541,
+            "points_count": 1524,
             "feature_shape": [
                 1,
                 512
@@ -3369,7 +1770,7 @@
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4690,
+            "points_count": 4788,
             "feature_shape": [
                 1,
                 512
@@ -3382,7 +1783,7 @@
     {
         "observation": {
             "class_name": "bed",
-            "points_count": 16656,
+            "points_count": 16446,
             "feature_shape": [
                 1,
                 512
@@ -3395,7 +1796,7 @@
     {
         "observation": {
             "class_name": "trash bin",
-            "points_count": 626,
+            "points_count": 612,
             "feature_shape": [
                 1,
                 512
@@ -3407,47 +1808,8 @@
     },
     {
         "observation": {
-            "class_name": "nightstand",
-            "points_count": 934,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 55,
-        "object_class": "nightstand"
-    },
-    {
-        "observation": {
-            "class_name": "trash bin",
-            "points_count": 636,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 56,
-        "object_class": "trash bin"
-    },
-    {
-        "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1693,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "created_new",
-        "object_id": 57,
-        "object_class": "air conditioner"
-    },
-    {
-        "observation": {
             "class_name": "picture frame",
-            "points_count": 4298,
+            "points_count": 4467,
             "feature_shape": [
                 1,
                 512
@@ -3459,8 +1821,86 @@
     },
     {
         "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1680,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 55,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "trash bin",
+            "points_count": 641,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 54,
+        "object_class": "trash bin"
+    },
+    {
+        "observation": {
+            "class_name": "bed",
+            "points_count": 12791,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 53,
+        "object_class": "bed"
+    },
+    {
+        "observation": {
             "class_name": "nightstand",
-            "points_count": 753,
+            "points_count": 989,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 56,
+        "object_class": "nightstand"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 4159,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 52,
+        "object_class": "picture frame"
+    },
+    {
+        "observation": {
+            "class_name": "air conditioner",
+            "points_count": 1760,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 57,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "sofa",
+            "points_count": 8821,
             "feature_shape": [
                 1,
                 512
@@ -3468,12 +1908,25 @@
         },
         "action": "created_new",
         "object_id": 58,
-        "object_class": "nightstand"
+        "object_class": "sofa"
     },
     {
         "observation": {
-            "class_name": "sofa",
-            "points_count": 10934,
+            "class_name": "picture frame",
+            "points_count": 4001,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 52,
+        "object_class": "picture frame"
+    },
+    {
+        "observation": {
+            "class_name": "trash bin",
+            "points_count": 664,
             "feature_shape": [
                 1,
                 512
@@ -3481,12 +1934,25 @@
         },
         "action": "created_new",
         "object_id": 59,
-        "object_class": "sofa"
+        "object_class": "trash bin"
     },
     {
         "observation": {
-            "class_name": "picture frame",
-            "points_count": 4070,
+            "class_name": "air conditioner",
+            "points_count": 1556,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 57,
+        "object_class": "air conditioner"
+    },
+    {
+        "observation": {
+            "class_name": "nightstand",
+            "points_count": 860,
             "feature_shape": [
                 1,
                 512
@@ -3494,12 +1960,12 @@
         },
         "action": "created_new",
         "object_id": 60,
-        "object_class": "picture frame"
+        "object_class": "nightstand"
     },
     {
         "observation": {
-            "class_name": "air conditioner",
-            "points_count": 1610,
+            "class_name": "picture frame",
+            "points_count": 4162,
             "feature_shape": [
                 1,
                 512
@@ -3507,25 +1973,25 @@
         },
         "action": "created_new",
         "object_id": 61,
-        "object_class": "air conditioner"
+        "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "nightstand",
-            "points_count": 859,
+            "class_name": "trash bin",
+            "points_count": 693,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 58,
-        "object_class": "nightstand"
+        "object_id": 59,
+        "object_class": "trash bin"
     },
     {
         "observation": {
-            "class_name": "picture frame",
-            "points_count": 4006,
+            "class_name": "nightstand",
+            "points_count": 961,
             "feature_shape": [
                 1,
                 512
@@ -3533,12 +1999,25 @@
         },
         "action": "matched_existing",
         "object_id": 60,
+        "object_class": "nightstand"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 4002,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 61,
         "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "trash bin",
-            "points_count": 754,
+            "points_count": 762,
             "feature_shape": [
                 1,
                 512
@@ -3551,33 +2030,33 @@
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4157,
+            "points_count": 3943,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 60,
+        "object_id": 61,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "trash bin",
-            "points_count": 807,
+            "class_name": "picture frame",
+            "points_count": 4125,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 62,
-        "object_class": "trash bin"
+        "object_id": 61,
+        "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "clock",
-            "points_count": 3250,
+            "class_name": "chair",
+            "points_count": 2185,
             "feature_shape": [
                 1,
                 512
@@ -3585,25 +2064,12 @@
         },
         "action": "created_new",
         "object_id": 63,
-        "object_class": "clock"
+        "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4075,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 60,
-        "object_class": "picture frame"
-    },
-    {
-        "observation": {
-            "class_name": "chair",
-            "points_count": 2207,
+            "points_count": 3915,
             "feature_shape": [
                 1,
                 512
@@ -3611,25 +2077,12 @@
         },
         "action": "created_new",
         "object_id": 64,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "picture frame",
-            "points_count": 4074,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 60,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2208,
+            "class_name": "picture frame",
+            "points_count": 3937,
             "feature_shape": [
                 1,
                 512
@@ -3637,25 +2090,12 @@
         },
         "action": "matched_existing",
         "object_id": 64,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "picture frame",
-            "points_count": 4073,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 60,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2208,
+            "class_name": "picture frame",
+            "points_count": 4154,
             "feature_shape": [
                 1,
                 512
@@ -3663,25 +2103,12 @@
         },
         "action": "matched_existing",
         "object_id": 64,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "picture frame",
-            "points_count": 4075,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 60,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2208,
+            "class_name": "picture frame",
+            "points_count": 4234,
             "feature_shape": [
                 1,
                 512
@@ -3689,25 +2116,25 @@
         },
         "action": "matched_existing",
         "object_id": 64,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "picture frame",
-            "points_count": 4074,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 60,
         "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2208,
+            "points_count": 1929,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 65,
+        "object_class": "chair"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 4121,
             "feature_shape": [
                 1,
                 512
@@ -3715,25 +2142,12 @@
         },
         "action": "matched_existing",
         "object_id": 64,
-        "object_class": "chair"
-    },
-    {
-        "observation": {
-            "class_name": "picture frame",
-            "points_count": 4075,
-            "feature_shape": [
-                1,
-                512
-            ]
-        },
-        "action": "matched_existing",
-        "object_id": 60,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2208,
+            "class_name": "picture frame",
+            "points_count": 4205,
             "feature_shape": [
                 1,
                 512
@@ -3741,266 +2155,682 @@
         },
         "action": "matched_existing",
         "object_id": 64,
-        "object_class": "chair"
+        "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4076,
+            "points_count": 4400,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 60,
+        "action": "created_new",
+        "object_id": 66,
         "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2207,
+            "points_count": 1858,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 64,
+        "action": "created_new",
+        "object_id": 67,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4079,
+            "points_count": 4507,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 60,
+        "object_id": 66,
         "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2207,
+            "points_count": 1859,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 64,
+        "object_id": 67,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4076,
+            "points_count": 4919,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 60,
+        "action": "created_new",
+        "object_id": 68,
         "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2207,
+            "points_count": 1847,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 64,
+        "action": "created_new",
+        "object_id": 69,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4076,
+            "points_count": 5039,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 60,
+        "object_id": 68,
+        "object_class": "picture frame"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 5612,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 70,
         "object_class": "picture frame"
     },
     {
         "observation": {
             "class_name": "chair",
-            "points_count": 2208,
+            "points_count": 2534,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 64,
+        "action": "created_new",
+        "object_id": 71,
         "object_class": "chair"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4075,
+            "points_count": 1710,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 60,
+        "action": "created_new",
+        "object_id": 72,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2207,
+            "class_name": "person",
+            "points_count": 696,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 64,
-        "object_class": "chair"
+        "action": "created_new",
+        "object_id": 73,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 237,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 74,
+        "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4074,
+            "points_count": 3810,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 60,
+        "object_id": 72,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2208,
+            "class_name": "person",
+            "points_count": 752,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 64,
-        "object_class": "chair"
+        "object_id": 73,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "person",
+            "points_count": 562,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 73,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 250,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 74,
+        "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4076,
+            "points_count": 5722,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 60,
+        "object_id": 72,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2207,
+            "class_name": "person",
+            "points_count": 465,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 64,
-        "object_class": "chair"
+        "object_id": 73,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "person",
+            "points_count": 754,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 73,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 7498,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 75,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8401,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 75,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "lamp",
+            "points_count": 217,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 76,
+        "object_class": "lamp"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4077,
+            "points_count": 10729,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 60,
+        "object_id": 72,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2207,
+            "class_name": "lamp",
+            "points_count": 217,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 64,
-        "object_class": "chair"
+        "object_id": 76,
+        "object_class": "lamp"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 11892,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 75,
+        "object_class": "tv"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4078,
+            "points_count": 10513,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 60,
+        "action": "created_new",
+        "object_id": 77,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2209,
+            "class_name": "tv",
+            "points_count": 9791,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 78,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 10523,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 64,
-        "object_class": "chair"
+        "object_id": 78,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 9928,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 78,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 9658,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 78,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8837,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 79,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8580,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 79,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8724,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 79,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8575,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 79,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8544,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 80,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8371,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 80,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8467,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 80,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 9192,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 81,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8472,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 81,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8513,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 81,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8651,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 81,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 8702,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 82,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 9405,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 82,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "person",
+            "points_count": 414,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 83,
+        "object_class": "person"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 9853,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 84,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 10133,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 84,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 10201,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 84,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 10618,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 84,
+        "object_class": "tv"
+    },
+    {
+        "observation": {
+            "class_name": "tv",
+            "points_count": 11586,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "created_new",
+        "object_id": 85,
+        "object_class": "tv"
     },
     {
         "observation": {
             "class_name": "picture frame",
-            "points_count": 4073,
+            "points_count": 4743,
             "feature_shape": [
                 1,
                 512
             ]
         },
-        "action": "matched_existing",
-        "object_id": 60,
+        "action": "created_new",
+        "object_id": 86,
         "object_class": "picture frame"
     },
     {
         "observation": {
-            "class_name": "chair",
-            "points_count": 2208,
+            "class_name": "picture frame",
+            "points_count": 3351,
             "feature_shape": [
                 1,
                 512
             ]
         },
         "action": "matched_existing",
-        "object_id": 64,
-        "object_class": "chair"
+        "object_id": 86,
+        "object_class": "picture frame"
+    },
+    {
+        "observation": {
+            "class_name": "picture frame",
+            "points_count": 1671,
+            "feature_shape": [
+                1,
+                512
+            ]
+        },
+        "action": "matched_existing",
+        "object_id": 86,
+        "object_class": "picture frame"
     }
 ]

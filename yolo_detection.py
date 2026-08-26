@@ -54,8 +54,11 @@ class YoloNode(Node):
         self.sync.registerCallback(self.synced_callback)
         
         self.info_sub = self.create_subscription(CameraInfo, CONFIG['camera_info_topic'], self.info_callback, 10)
+        
+        # Periodic Map-Level Merging Timer (Every 5 seconds)
+        self.merge_timer = self.create_timer(5.0, self.merge_timer_callback)
+        
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
         self.clip_checkpoint = CONFIG['clip_checkpoint']
         self.clip_model, _, self.clip_preprocess = mobileclip.create_model_and_transforms(
             CONFIG['clip_model_name'],
@@ -86,7 +89,12 @@ class YoloNode(Node):
         points_odom = points_camera @ R_odom_camera.T + t_odom_camera
         return points_odom
 
-
+    def merge_timer_callback(self):
+        before = len(self.map_manager.objects)
+        self.map_manager.merge_duplicates()
+        after = len(self.map_manager.objects)
+        if before != after:
+            self.get_logger().info(f"[MapManager] Merged duplicates. Map size reduced from {before} to {after}")
 
     def mask_to_camera_points(self, mask, depth):
         if self.fx is None:
@@ -274,7 +282,6 @@ class YoloNode(Node):
                 label = f"{class_name} {confidence:.2f}"
                 cv2.putText(visualization, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
             
-            # Here you can process or publish `frame_objects` for the downstream SLAM/mapping node
 
         cv2.imshow("YOLO + MobileSAM", visualization)
         cv2.waitKey(1)
@@ -283,14 +290,25 @@ class YoloNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     node = YoloNode()
 
-    rclpy.spin(node)
-
-    node.destroy_node()
-    rclpy.shutdown()
-
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.get_logger().info("[EndProcess] Shutting down. Running final map-level merge...")
+        before = len(node.map_manager.objects)
+        node.map_manager.merge_duplicates()
+        after = len(node.map_manager.objects)
+        node.get_logger().info(f"[EndProcess] Final merge complete. Map size reduced from {before} to {after}")
+        
+        # Save the final merged map to JSON
+        node.map_manager.save_map("final_map.json")
+        node.get_logger().info("[EndProcess] Final map saved to final_map.json")
+        
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
