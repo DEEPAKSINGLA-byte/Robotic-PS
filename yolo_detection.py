@@ -15,6 +15,8 @@ from scipy.spatial.transform import Rotation
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from config import CONFIG
 from local_object import LocalObject
+from map_manager import MapManager
+
 
 class YoloNode(Node):
 
@@ -23,7 +25,7 @@ class YoloNode(Node):
             'yolo_node',
             parameter_overrides=[Parameter('use_sim_time', Parameter.Type.BOOL, True)]
         )
-        self.concrete_map=[]
+        self.map_manager = MapManager()
         self.declare_parameter(
             'association_threshold',
             0.8
@@ -83,32 +85,7 @@ class YoloNode(Node):
         t_odom_camera=R_odom_base @ t_base_camera + translation
         points_odom = points_camera @ R_odom_camera.T + t_odom_camera
         return points_odom
-    def add_to_concrete_map(self,class_name,points_odom,feature):
-        best_object,best_score=self.find_matching_object(class_name,points_odom,feature)
-        if best_object is not None and best_score>self.association_threshold:
-            print(
-                f"Matched {class_name} "
-                f"with object {best_object['id']} "
-                f"score={best_score:.3f}"
-            )
-            self.update_map_object(best_object,points_odom,feature)
-        else:
-            new_object=self.create_new_object(class_name,points_odom,feature)
-            self.concrete_map.append(new_object)
-    def update_map_object(self,obj,points_odom,feature):
-        obj['points']=np.vstack([obj['points'],points_odom])
-        obj["observations"]+=1
-        obj['feature']=(obj["feature"]+feature)
-        obj["feature"]=obj["feature"]/obj["feature"].norm(dim=-1,keepdim=True)
 
-    def create_new_object(self,class_name,points_odom,feature):
-        return {
-            "id":len(self.concrete_map),
-            "class_name":class_name,
-            "feature":feature,
-            "points":points_odom,
-            "observations":1
-        }
 
 
     def mask_to_camera_points(self, mask, depth):
@@ -208,66 +185,11 @@ class YoloNode(Node):
                 new_boxes.append(current_box)
             boxes=new_boxes
         return boxes
-    def feature_similarity(self,feature_a,feature_b):
-        feature_a=feature_a/feature_a.norm(dim=-1,keepdim=True)
-        feature_b=feature_b/feature_b.norm(dim=-1,keepdim=True)
-        return (feature_a*feature_b).sum()
-    def calculate_3d_overlap(self,points1,points2):
-        min1=np.min(points1,axis=0)
-        max1=np.max(points1,axis=0)
-        min2=np.min(points2,axis=0)
-        max2=np.max(points2,axis=0)
-        intersection_min=np.maximum(min1,min2)
-        intersection_max=np.minimum(max1,max2)
-        if np.any(intersection_min>=intersection_max):
-            return 0.0
-        intersection_size=intersection_max-intersection_min
-        intersection_volume=np.prod(intersection_size)
-        volume1=np.prod(max1-min1)
-        volume2=np.prod(max2-min2)
-        union_volume=volume1+volume2-intersection_volume
-        if union_volume<=0:
-            return 0.0
-        return float(intersection_volume/union_volume)
-    def find_matching_object(self,class_name,points_odom,feature):
-        best_object=None
-        best_score=-float("inf")
-        for obj in self.concrete_map:
-            if obj["class_name"]!=class_name:
-                continue
-            semantic_score=self.feature_similarity(feature,obj["feature"]).item()
-            overlap_score=self.calculate_3d_overlap(points_odom,obj["points"])
-            score=semantic_score+overlap_score
-            if score>best_score:
-                best_score=score
-                best_object=obj
-        return best_object,best_score
+
     def synced_callback(self, rgb_msg, depth_msg,odom_msg):
         rgb_time = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
         depth_time = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
         odom_time = odom_msg.header.stamp.sec + odom_msg.header.stamp.nanosec * 1e-9
-        
-        print(
-            f"RGB: {rgb_time:.6f} | "
-            f"Depth: {depth_time:.6f} | "
-            f"Odom: {odom_time:.6f} | "
-            f"RGB-Depth: {abs(rgb_time-depth_time):.6f}s | "
-            f"RGB-Odom: {abs(rgb_time-odom_time):.6f}s"
-        )
-        print(
-            f"Odom position: "
-            f"x={odom_msg.pose.pose.position.x:.3f}, "
-            f"y={odom_msg.pose.pose.position.y:.3f}, "
-            f"z={odom_msg.pose.pose.position.z:.3f}"
-        )
-        print(
-            f"Odom quaternion: "
-            f"x={odom_msg.pose.pose.orientation.x:.3f}, "
-            f"y={odom_msg.pose.pose.orientation.y:.3f}, "
-            f"z={odom_msg.pose.pose.orientation.z:.3f}, "
-            f"w={odom_msg.pose.pose.orientation.w:.3f}"
-        )
-
         
         frame = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
         depth = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
@@ -323,18 +245,7 @@ class YoloNode(Node):
                         odom_msg
                     )
                     if points_odom is not None:
-                        print(
-                            f"{class_name}: "
-                            f"camera points = {points_camera.shape}, "
-                            f"odom points = {points_odom.shape}"
-                        )
-                        centroid_camera = np.mean(points_camera, axis=0)
-                        centroid_odom = np.mean(points_odom, axis=0)
-                        print(
-                            f"{class_name}: "
-                            f"camera centroid = {centroid_camera}, "
-                            f"odom centroid = {centroid_odom}"
-                        )
+                        pass
                 overlay = visualization.copy()
                 overlay[mask] = (0, 255, 0)
 
@@ -346,11 +257,7 @@ class YoloNode(Node):
                 feature=self.get_clip_features(frame,box_xyxy,class_name)
                 
                 if points_odom is not None:
-                    self.add_to_concrete_map(
-                        class_name,
-                        points_odom,
-                        feature
-                    )                
+                    matched_obj = self.map_manager.process_observation(class_name, points_odom, feature)
                 
                 frame_objects.append({
                     'class_name': class_name,
