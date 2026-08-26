@@ -14,6 +14,7 @@ from PIL import Image as PILImage
 from scipy.spatial.transform import Rotation
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from config import CONFIG
+from local_object import LocalObject
 
 class YoloNode(Node):
 
@@ -22,6 +23,15 @@ class YoloNode(Node):
             'yolo_node',
             parameter_overrides=[Parameter('use_sim_time', Parameter.Type.BOOL, True)]
         )
+        self.concrete_map=[]
+        self.declare_parameter(
+            'association_threshold',
+            0.8
+        )
+
+        self.association_threshold = self.get_parameter(
+            'association_threshold'
+        ).value
         self.fx=None
         self.fy=None
         self.cx=None
@@ -73,6 +83,34 @@ class YoloNode(Node):
         t_odom_camera=R_odom_base @ t_base_camera + translation
         points_odom = points_camera @ R_odom_camera.T + t_odom_camera
         return points_odom
+    def add_to_concrete_map(self,class_name,points_odom,feature):
+        best_object,best_score=self.find_matching_object(class_name,points_odom,feature)
+        if best_object is not None and best_score>self.association_threshold:
+            print(
+                f"Matched {class_name} "
+                f"with object {best_object['id']} "
+                f"score={best_score:.3f}"
+            )
+            self.update_map_object(best_object,points_odom,feature)
+        else:
+            new_object=self.create_new_object(class_name,points_odom,feature)
+            self.concrete_map.append(new_object)
+    def update_map_object(self,obj,points_odom,feature):
+        obj['points']=np.vstack([obj['points'],points_odom])
+        obj["observations"]+=1
+        obj['feature']=(obj["feature"]+feature)
+        obj["feature"]=obj["feature"]/obj["feature"].norm(dim=-1,keepdim=True)
+
+    def create_new_object(self,class_name,points_odom,feature):
+        return {
+            "id":len(self.concrete_map),
+            "class_name":class_name,
+            "feature":feature,
+            "points":points_odom,
+            "observations":1
+        }
+
+
     def mask_to_camera_points(self, mask, depth):
         if self.fx is None:
             return None
@@ -170,6 +208,40 @@ class YoloNode(Node):
                 new_boxes.append(current_box)
             boxes=new_boxes
         return boxes
+    def feature_similarity(self,feature_a,feature_b):
+        feature_a=feature_a/feature_a.norm(dim=-1,keepdim=True)
+        feature_b=feature_b/feature_b.norm(dim=-1,keepdim=True)
+        return (feature_a*feature_b).sum()
+    def calculate_3d_overlap(self,points1,points2):
+        min1=np.min(points1,axis=0)
+        max1=np.max(points1,axis=0)
+        min2=np.min(points2,axis=0)
+        max2=np.max(points2,axis=0)
+        intersection_min=np.maximum(min1,min2)
+        intersection_max=np.minimum(max1,max2)
+        if np.any(intersection_min>=intersection_max):
+            return 0.0
+        intersection_size=intersection_max-intersection_min
+        intersection_volume=np.prod(intersection_size)
+        volume1=np.prod(max1-min1)
+        volume2=np.prod(max2-min2)
+        union_volume=volume1+volume2-intersection_volume
+        if union_volume<=0:
+            return 0.0
+        return float(intersection_volume/union_volume)
+    def find_matching_object(self,class_name,points_odom,feature):
+        best_object=None
+        best_score=-float("inf")
+        for obj in self.concrete_map:
+            if obj["class_name"]!=class_name:
+                continue
+            semantic_score=self.feature_similarity(feature,obj["feature"]).item()
+            overlap_score=self.calculate_3d_overlap(points_odom,obj["points"])
+            score=semantic_score+overlap_score
+            if score>best_score:
+                best_score=score
+                best_object=obj
+        return best_object,best_score
     def synced_callback(self, rgb_msg, depth_msg,odom_msg):
         rgb_time = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
         depth_time = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
@@ -228,7 +300,7 @@ class YoloNode(Node):
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.predictor.set_image(rgb_frame)
             
-            semantic_map_objects = []
+            frame_objects = []
 
             for box_info in merged_boxes:
                 points_odom = None
@@ -270,10 +342,17 @@ class YoloNode(Node):
                 
                 x1, y1, x2, y2 = map(int, box_xyxy)
                 cv2.rectangle(visualization, (x1, y1), (x2, y2), (255, 0, 0), 2)
-
+                
                 feature=self.get_clip_features(frame,box_xyxy,class_name)
                 
-                semantic_map_objects.append({
+                if points_odom is not None:
+                    self.add_to_concrete_map(
+                        class_name,
+                        points_odom,
+                        feature
+                    )                
+                
+                frame_objects.append({
                     'class_name': class_name,
                     'confidence': confidence,
                     'mask': mask,
@@ -284,7 +363,7 @@ class YoloNode(Node):
                 label = f"{class_name} {confidence:.2f}"
                 cv2.putText(visualization, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
             
-            # Here you can process or publish `semantic_map_objects` for the downstream SLAM/mapping node
+            # Here you can process or publish `frame_objects` for the downstream SLAM/mapping node
 
         cv2.imshow("YOLO + MobileSAM", visualization)
         cv2.waitKey(1)
