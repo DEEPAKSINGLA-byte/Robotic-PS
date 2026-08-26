@@ -1,6 +1,7 @@
 import torch
 import rclpy
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from sensor_msgs.msg import Image,CameraInfo
 from cv_bridge import CvBridge
 from ultralytics import YOLO
@@ -8,131 +9,70 @@ from mobile_sam import sam_model_registry, SamPredictor
 import numpy as np
 import cv2
 import mobileclip 
-import tf2_ros
+from nav_msgs.msg import Odometry
 from PIL import Image as PILImage
 from scipy.spatial.transform import Rotation
 from message_filters import Subscriber, ApproximateTimeSynchronizer
+from config import CONFIG
 
 class YoloNode(Node):
 
     def __init__(self):
-        super().__init__('yolo_node')
+        super().__init__(
+            'yolo_node',
+            parameter_overrides=[Parameter('use_sim_time', Parameter.Type.BOOL, True)]
+        )
         self.fx=None
         self.fy=None
         self.cx=None
         self.cy=None
-        self.tf_buffer=tf2_ros.Buffer()
-        self.tf_listener=tf2_ros.TransformListener(self.tf_buffer,self)
         self.declare_parameter('global_frame', 'map')
         self.global_frame = self.get_parameter('global_frame').value
         
-        self.rgb_sub = Subscriber(self, Image, '/camera/image')
-        self.depth_sub = Subscriber(self, Image, '/camera/depth_image')
+        self.rgb_sub = Subscriber(self, Image, CONFIG['rgb_topic'])
+        self.depth_sub = Subscriber(self, Image, CONFIG['depth_topic'])
+        self.odom_sub = Subscriber(self, Odometry, CONFIG['odom_topic'])
         self.sync = ApproximateTimeSynchronizer(
-            [self.rgb_sub, self.depth_sub],
-            queue_size=10,
-            slop=0.05
+            [self.rgb_sub, self.depth_sub, self.odom_sub],
+            queue_size=CONFIG['sync_queue_size'],
+            slop=CONFIG['sync_slop']
         )
+        self.camera_translation = np.array(CONFIG['camera_translation'], dtype=np.float64)
+        self.camera_rotation = np.eye(3, dtype=np.float64)
         self.sync.registerCallback(self.synced_callback)
         
-        self.info_sub=self.create_subscription(CameraInfo,'/camera/camera_info',self.info_callback,10)
+        self.info_sub = self.create_subscription(CameraInfo, CONFIG['camera_info_topic'], self.info_callback, 10)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-        self.clip_checkpoint = "/home/deepak/InterIIT_practice/task_2/mobileclip_s2.pt" # Update this to your MobileCLIP checkpoint path
+        self.clip_checkpoint = CONFIG['clip_checkpoint']
         self.clip_model, _, self.clip_preprocess = mobileclip.create_model_and_transforms(
-            "mobileclip_s2",
-            pretrained=self.clip_checkpoint, # Use the actual downloaded checkpoint
+            CONFIG['clip_model_name'],
+            pretrained=self.clip_checkpoint,
             device=self.device
         )
         self.clip_model.eval()
-        self.clip_tokenize = mobileclip.get_tokenizer("mobileclip_s2")
+        self.clip_tokenize = mobileclip.get_tokenizer(CONFIG['clip_model_name'])
 
         self.bridge = CvBridge()
 
-        self.model = YOLO("yolov8x-worldv2.pt")
+        self.model = YOLO(CONFIG['yolo_checkpoint'])
         self.model.to(self.device)
 
-        self.sam = sam_model_registry["vit_t"](checkpoint="mobile_sam.pt")
+        self.sam = sam_model_registry[CONFIG['sam_model_type']](checkpoint=CONFIG['sam_checkpoint'])
         self.sam.to(device=self.device)
         self.predictor = SamPredictor(self.sam)
-        self.model.set_classes([
-            "person",
-            "chair",
-            "bed",
-            "nightstand",
-            "table",
-            "coffee table",
-            "desk",
-            "dining table",
-            "door",
-            "window",
-            "cabinet",
-            "kitchen cabinet",
-            "refrigerator",
-            "sofa",
-            "trash bin",
-            "tv",
-            "tv cabinet",
-            "vase",
-            "wardrobe",
-            "shoe rack",
-            "air conditioner",
-            "sink",
-            "microwave",
-            "oven",
-            "toaster",
-            "bottle",
-            "cup",
-            "bowl",
-            "plate",
-            "fork",
-            "knife",
-            "spoon",
-            "book",
-            "laptop",
-            "computer",
-            "keyboard",
-            "mouse",
-            "remote",
-            "cell phone",
-            "clock",
-            "backpack",
-            "handbag",
-            "suitcase",
-            "potted plant",
-            "toilet",
-            "mirror",
-            "lamp",
-            "fan",
-            "picture frame",
-            "washing machine"
-        ])
-    def transform_points_to_global(self, points_camera, timestamp):
-        try:
-            transform = self.tf_buffer.lookup_transform(
-                self.global_frame,
-                'camera_link',
-                timestamp
-            )
-        except Exception as e:
-            self.get_logger().warn(f"TF lookup failed: {e}")
-            return None
-
-        tx = transform.transform.translation.x
-        ty = transform.transform.translation.y
-        tz = transform.transform.translation.z
-        translation = np.array([tx, ty, tz])
-
-        qx = transform.transform.rotation.x
-        qy = transform.transform.rotation.y
-        qz = transform.transform.rotation.z
-        qw = transform.transform.rotation.w
-
-        rotation = Rotation.from_quat([qx, qy, qz, qw])
-        R = rotation.as_matrix()
-
-        points_global = points_camera @ R.T + translation
-        return points_global
+        self.model.set_classes(CONFIG['yolo_classes'])
+    def transform_points_from_odom(self, points_camera, odom_msg):
+        translation=np.array([odom_msg.pose.pose.position.x,odom_msg.pose.pose.position.y,odom_msg.pose.pose.position.z],dtype=np.float64)
+        quaternion=np.array([odom_msg.pose.pose.orientation.x,odom_msg.pose.pose.orientation.y,odom_msg.pose.pose.orientation.z,odom_msg.pose.pose.orientation.w],dtype=np.float64)
+        rotation=Rotation.from_quat(quaternion)
+        R_odom_base=rotation.as_matrix()
+        R_base_camera=self.camera_rotation
+        t_base_camera=self.camera_translation
+        R_odom_camera=R_odom_base @ R_base_camera
+        t_odom_camera=R_odom_base @ t_base_camera + translation
+        points_odom = points_camera @ R_odom_camera.T + t_odom_camera
+        return points_odom
     def mask_to_camera_points(self, mask, depth):
         if self.fx is None:
             return None
@@ -230,10 +170,32 @@ class YoloNode(Node):
                 new_boxes.append(current_box)
             boxes=new_boxes
         return boxes
-    def synced_callback(self, rgb_msg, depth_msg):
+    def synced_callback(self, rgb_msg, depth_msg,odom_msg):
         rgb_time = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
         depth_time = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
-        print(f"RGB: {rgb_time:.6f} | Depth: {depth_time:.6f} | Diff: {abs(rgb_time-depth_time):.6f}s")
+        odom_time = odom_msg.header.stamp.sec + odom_msg.header.stamp.nanosec * 1e-9
+        
+        print(
+            f"RGB: {rgb_time:.6f} | "
+            f"Depth: {depth_time:.6f} | "
+            f"Odom: {odom_time:.6f} | "
+            f"RGB-Depth: {abs(rgb_time-depth_time):.6f}s | "
+            f"RGB-Odom: {abs(rgb_time-odom_time):.6f}s"
+        )
+        print(
+            f"Odom position: "
+            f"x={odom_msg.pose.pose.position.x:.3f}, "
+            f"y={odom_msg.pose.pose.position.y:.3f}, "
+            f"z={odom_msg.pose.pose.position.z:.3f}"
+        )
+        print(
+            f"Odom quaternion: "
+            f"x={odom_msg.pose.pose.orientation.x:.3f}, "
+            f"y={odom_msg.pose.pose.orientation.y:.3f}, "
+            f"z={odom_msg.pose.pose.orientation.z:.3f}, "
+            f"w={odom_msg.pose.pose.orientation.w:.3f}"
+        )
+
         
         frame = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
         depth = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
@@ -254,7 +216,12 @@ class YoloNode(Node):
                 confidence
             ])
 
-        merged_boxes = self.merge_boxes(frame, boxes, iou_threshold=0.5, color_threshold=0.7)
+        merged_boxes = self.merge_boxes(
+            frame, 
+            boxes, 
+            iou_threshold=CONFIG['iou_threshold'], 
+            color_threshold=CONFIG['color_threshold']
+        )
 
         visualization = frame.copy()
         if len(merged_boxes) > 0:
@@ -264,11 +231,11 @@ class YoloNode(Node):
             semantic_map_objects = []
 
             for box_info in merged_boxes:
+                points_odom = None
                 box_xyxy = box_info[:4]
                 class_id = int(box_info[4])
                 confidence = float(box_info[5])
 
-                
                 masks, scores, logits = self.predictor.predict(
                     box=np.array(box_xyxy),
                     multimask_output=False
@@ -279,15 +246,22 @@ class YoloNode(Node):
                 class_name = self.model.names[class_id]
                 
                 if points_camera is not None and points_camera.shape[0] > 0:
-                    points_global = self.transform_points_to_global(
+                    points_odom = self.transform_points_from_odom(
                         points_camera,
-                        rgb_msg.header.stamp
+                        odom_msg
                     )
-                    if points_global is not None:
+                    if points_odom is not None:
                         print(
                             f"{class_name}: "
                             f"camera points = {points_camera.shape}, "
-                            f"global points = {points_global.shape}"
+                            f"odom points = {points_odom.shape}"
+                        )
+                        centroid_camera = np.mean(points_camera, axis=0)
+                        centroid_odom = np.mean(points_odom, axis=0)
+                        print(
+                            f"{class_name}: "
+                            f"camera centroid = {centroid_camera}, "
+                            f"odom centroid = {centroid_odom}"
                         )
                 overlay = visualization.copy()
                 overlay[mask] = (0, 255, 0)
@@ -299,12 +273,11 @@ class YoloNode(Node):
 
                 feature=self.get_clip_features(frame,box_xyxy,class_name)
                 
-                points_global_safe = points_global if 'points_global' in locals() else None
                 semantic_map_objects.append({
                     'class_name': class_name,
                     'confidence': confidence,
                     'mask': mask,
-                    'points_global': points_global_safe,
+                    'points_odom': points_odom,
                     'clip_feature': feature
                 })
 
@@ -315,6 +288,7 @@ class YoloNode(Node):
 
         cv2.imshow("YOLO + MobileSAM", visualization)
         cv2.waitKey(1)
+
 
 
 def main(args=None):
