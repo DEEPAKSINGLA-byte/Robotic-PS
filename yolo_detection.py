@@ -9,7 +9,7 @@ from mobile_sam import sam_model_registry, SamPredictor
 import numpy as np
 import cv2
 import mobileclip
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, OccupancyGrid
 from PIL import Image as PILImage
 from scipy.spatial.transform import Rotation
 from message_filters import Subscriber, ApproximateTimeSynchronizer
@@ -34,6 +34,11 @@ class YoloNode(Node):
         self.association_threshold = self.get_parameter(
             'association_threshold'
         ).value
+        self.costmap=None
+        self.costmap_resolution=None
+        self.costmap_origin_x=None
+        self.costmap_origin_y=None
+        
         self.fx=None
         self.fy=None
         self.cx=None
@@ -51,6 +56,8 @@ class YoloNode(Node):
         self.camera_translation = np.array(CONFIG['camera_translation'], dtype=np.float64)
         self.camera_rotation = np.eye(3, dtype=np.float64)
         self.sync.registerCallback(self.synced_callback)
+        self.costmap_sub = self.create_subscription(OccupancyGrid, '/global_costmap/costmap', self.costmap_callback, 10)
+        self.occupancy_grid = None
         self.info_sub = self.create_subscription(CameraInfo, CONFIG['camera_info_topic'], self.info_callback, 10)
         self.merge_timer = self.create_timer(5.0, self.merge_timer_callback)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -86,6 +93,35 @@ class YoloNode(Node):
         after = len(self.map_manager.objects)
         if before != after:
             self.get_logger().info(f"[MapManager] Merged duplicates. Map size reduced from {before} to {after}")
+    def costmap_callback(self, msg):
+        self.costmap = msg
+        self.costmap_resolution = msg.info.resolution
+        self.costmap_origin_x = msg.info.origin.position.x
+        self.costmap_origin_y = msg.info.origin.position.y
+        width = msg.info.width
+        height = msg.info.height
+        self.costmap_data = np.array(msg.data).reshape((height, width))
+        
+    def get_safe_goal(self, obj_x, obj_y):
+        if self.costmap is None:
+            return None
+            
+        # Parentheses added to enforce correct order of operations!
+        grid_x = int((obj_x - self.costmap_origin_x) / self.costmap_resolution)
+        grid_y = int((obj_y - self.costmap_origin_y) / self.costmap_resolution)
+        
+        free_indices = np.argwhere(self.costmap_data == 0)
+        if len(free_indices) == 0:
+            return None
+            
+        target = np.array([grid_y, grid_x])
+        distances = np.linalg.norm(free_indices - target, axis=1)
+        nearest_idx = np.argmin(distances)
+        nearest_cell = free_indices[nearest_idx]
+        
+        safe_x = (nearest_cell[1] * self.costmap_resolution) + self.costmap_origin_x + (self.costmap_resolution / 2.0)
+        safe_y = (nearest_cell[0] * self.costmap_resolution) + self.costmap_origin_y + (self.costmap_resolution / 2.0)
+        return (float(safe_x), float(safe_y))
     def mask_to_camera_points(self, mask, depth):
         if self.fx is None:
             return None
@@ -272,7 +308,8 @@ def main(args=None):
         node.map_manager.merge_duplicates()
         after = len(node.map_manager.objects)
         node.get_logger().info(f"[EndProcess] Final merge complete. Map size reduced from {before} to {after}")
-        node.map_manager.save_map("final_map.json")
+        # Save the final merged map to JSON with navigation goals
+        node.map_manager.save_map("final_map.json", snap_func=node.get_safe_goal)
         node.get_logger().info("[EndProcess] Final map saved to final_map.json")
         node.destroy_node()
         rclpy.shutdown()

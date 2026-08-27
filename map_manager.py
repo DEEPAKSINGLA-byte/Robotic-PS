@@ -92,15 +92,24 @@ class MapManager:
         gap=np.maximum(min2-max1,min1-max2)
         gap = np.maximum(gap, 0)
         return np.linalg.norm(gap)
-    def save_map(self, filepath="final_map.json"):
+    def save_map(self, filepath="final_map.json", snap_func=None):
         final_objects = []
         for obj in self.objects:
-            final_objects.append({
+            obj_data = {
                 "object_id": obj.id,
                 "class_name": obj.class_name,
                 "points_count": len(obj.points),
-                "observation_count": getattr(obj, 'observation_count', 1)
-            })
+                "observations": getattr(obj, 'observation_count', 1),
+                "centroid": obj.centroid.tolist() if len(obj.points) > 0 else None,
+                "min_bound": obj.min_bound.tolist() if len(obj.points) > 0 else None,
+                "max_bound": obj.max_bound.tolist() if len(obj.points) > 0 else None
+            }
+            if snap_func is not None and len(obj.points) > 0:
+                obj_x, obj_y = obj.centroid[:2]
+                safe_goal = snap_func(obj_x, obj_y)
+                obj_data["safe_nav_goal"] = safe_goal
+                
+            final_objects.append(obj_data)
         with open(filepath, "w") as f:
             json.dump(final_objects, f, indent=4)
     def process_observation(self, class_name, points, feature, timestamp=None):

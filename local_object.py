@@ -13,6 +13,19 @@ class LocalObject:
             "feature": feature,
             "point_cloud": points
         }]
+        
+    @property
+    def min_bound(self):
+        return np.min(self.points, axis=0) if len(self.points) > 0 else np.zeros(3)
+
+    @property
+    def max_bound(self):
+        return np.max(self.points, axis=0) if len(self.points) > 0 else np.zeros(3)
+        
+    @property
+    def centroid(self):
+        return np.mean(self.points, axis=0) if len(self.points) > 0 else np.zeros(3)
+
     def add_observation(self, points, feature, timestamp=None):
         self.points = np.vstack([
             self.points,
