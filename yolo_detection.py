@@ -8,7 +8,7 @@ from ultralytics import YOLO
 from mobile_sam import sam_model_registry, SamPredictor
 import numpy as np
 import cv2
-import mobileclip 
+import mobileclip
 from nav_msgs.msg import Odometry
 from PIL import Image as PILImage
 from scipy.spatial.transform import Rotation
@@ -16,21 +16,21 @@ from message_filters import Subscriber, ApproximateTimeSynchronizer
 from config import CONFIG
 from local_object import LocalObject
 from map_manager import MapManager
-
-
+import tf2_ros
+from tf2_ros import TransformException
 class YoloNode(Node):
-
     def __init__(self):
         super().__init__(
             'yolo_node',
             parameter_overrides=[Parameter('use_sim_time', Parameter.Type.BOOL, True)]
         )
         self.map_manager = MapManager()
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.declare_parameter(
             'association_threshold',
             0.8
         )
-
         self.association_threshold = self.get_parameter(
             'association_threshold'
         ).value
@@ -40,7 +40,6 @@ class YoloNode(Node):
         self.cy=None
         self.declare_parameter('global_frame', 'map')
         self.global_frame = self.get_parameter('global_frame').value
-        
         self.rgb_sub = Subscriber(self, Image, CONFIG['rgb_topic'])
         self.depth_sub = Subscriber(self, Image, CONFIG['depth_topic'])
         self.odom_sub = Subscriber(self, Odometry, CONFIG['odom_topic'])
@@ -52,12 +51,8 @@ class YoloNode(Node):
         self.camera_translation = np.array(CONFIG['camera_translation'], dtype=np.float64)
         self.camera_rotation = np.eye(3, dtype=np.float64)
         self.sync.registerCallback(self.synced_callback)
-        
         self.info_sub = self.create_subscription(CameraInfo, CONFIG['camera_info_topic'], self.info_callback, 10)
-        
-        # Periodic Map-Level Merging Timer (Every 5 seconds)
         self.merge_timer = self.create_timer(5.0, self.merge_timer_callback)
-        
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.clip_checkpoint = CONFIG['clip_checkpoint']
         self.clip_model, _, self.clip_preprocess = mobileclip.create_model_and_transforms(
@@ -67,12 +62,9 @@ class YoloNode(Node):
         )
         self.clip_model.eval()
         self.clip_tokenize = mobileclip.get_tokenizer(CONFIG['clip_model_name'])
-
         self.bridge = CvBridge()
-
         self.model = YOLO(CONFIG['yolo_checkpoint'])
         self.model.to(self.device)
-
         self.sam = sam_model_registry[CONFIG['sam_model_type']](checkpoint=CONFIG['sam_checkpoint'])
         self.sam.to(device=self.device)
         self.predictor = SamPredictor(self.sam)
@@ -88,23 +80,19 @@ class YoloNode(Node):
         t_odom_camera=R_odom_base @ t_base_camera + translation
         points_odom = points_camera @ R_odom_camera.T + t_odom_camera
         return points_odom
-
     def merge_timer_callback(self):
         before = len(self.map_manager.objects)
         self.map_manager.merge_duplicates()
         after = len(self.map_manager.objects)
         if before != after:
             self.get_logger().info(f"[MapManager] Merged duplicates. Map size reduced from {before} to {after}")
-
     def mask_to_camera_points(self, mask, depth):
         if self.fx is None:
             return None
         ys,xs=np.where(mask)
         depth_value=depth[ys,xs]
-        
         if depth.dtype == np.uint16:
             depth_value = depth_value.astype(np.float32) / 1000.0
-            
         valid=(depth_value>0) & np.isfinite(depth_value)
         xs=xs[valid]
         ys=ys[valid]
@@ -112,8 +100,7 @@ class YoloNode(Node):
         z=depth_value
         x=(xs-self.cx)*z/self.fx
         y=(ys-self.cy)*z/self.fy
-        return np.stack([x,y,z],axis=1)  
-
+        return np.stack([x,y,z],axis=1)
     def info_callback(self,msg):
         self.fx=msg.k[0]
         self.fy=msg.k[4]
@@ -124,20 +111,14 @@ class YoloNode(Node):
         y1 = max(box1[1], box2[1])
         x2 = min(box1[2], box2[2])
         y2 = min(box1[3], box2[3])
-
         intersection_width = max(0, x2 - x1)
         intersection_height = max(0, y2 - y1)
-
         intersection_area = intersection_width * intersection_height
-
         area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
         area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
-
         union_area = area1 + area2 - intersection_area
-
         if union_area == 0:
             return 0
-
         return intersection_area / union_area
     def color_similarity(self, image, box1, box2):
         x1, y1, x2, y2 = map(int, box1[:4])
@@ -193,24 +174,18 @@ class YoloNode(Node):
                 new_boxes.append(current_box)
             boxes=new_boxes
         return boxes
-
     def synced_callback(self, rgb_msg, depth_msg,odom_msg):
         rgb_time = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
         depth_time = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
         odom_time = odom_msg.header.stamp.sec + odom_msg.header.stamp.nanosec * 1e-9
-        
         frame = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
         depth = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
-        
         results = self.model(frame)
-
         boxes = []
         for box in results[0].boxes:
             confidence = float(box.conf[0])
-            
             if confidence < 0.55:
                 continue
-                
             box_xyxy = box.xyxy[0].cpu().numpy()
             class_id = int(box.cls[0])
             boxes.append([
@@ -221,77 +196,72 @@ class YoloNode(Node):
                 class_id,
                 confidence
             ])
-
         merged_boxes = self.merge_boxes(
-            frame, 
-            boxes, 
-            iou_threshold=CONFIG['iou_threshold'], 
+            frame,
+            boxes,
+            iou_threshold=CONFIG['iou_threshold'],
             color_threshold=CONFIG['color_threshold']
         )
-
         visualization = frame.copy()
         if len(merged_boxes) > 0:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.predictor.set_image(rgb_frame)
-            
             frame_objects = []
-
             for box_info in merged_boxes:
                 points_odom = None
                 box_xyxy = box_info[:4]
                 class_id = int(box_info[4])
                 confidence = float(box_info[5])
-
                 masks, scores, logits = self.predictor.predict(
                     box=np.array(box_xyxy),
                     multimask_output=False
                 )
                 mask = masks[0]
                 points_camera = self.mask_to_camera_points(mask, depth)
-                
                 class_name = self.model.names[class_id]
-                
                 if points_camera is not None and points_camera.shape[0] > 0:
                     points_odom = self.transform_points_from_odom(
                         points_camera,
                         odom_msg
                     )
+                    points_map = None
                     if points_odom is not None:
-                        pass
+                        try:
+                            # Lookup transform from odom to map (global_frame)
+                            t = self.tf_buffer.lookup_transform(
+                                self.global_frame,
+                                'odom',
+                                rclpy.time.Time()
+                            )
+                            translation = np.array([t.transform.translation.x, t.transform.translation.y, t.transform.translation.z])
+                            rotation_quat = [t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w]
+                            R_map_odom = Rotation.from_quat(rotation_quat).as_matrix()
+                            points_map = points_odom @ R_map_odom.T + translation
+                        except TransformException as ex:
+                            self.get_logger().warn(f'Could not transform odom to {self.global_frame}: {ex}')
+                            points_map = points_odom # Fallback if TF is missing
                 overlay = visualization.copy()
                 overlay[mask] = (0, 255, 0)
-
                 visualization = cv2.addWeighted(visualization, 0.7, overlay, 0.3, 0)
-                
                 x1, y1, x2, y2 = map(int, box_xyxy)
                 cv2.rectangle(visualization, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                
                 feature=self.get_clip_features(frame,box_xyxy,class_name)
-                
-                if points_odom is not None:
-                    matched_obj = self.map_manager.process_observation(class_name, points_odom, feature)
-                
+                if points_map is not None:
+                    matched_obj = self.map_manager.process_observation(class_name, points_map, feature)
                 frame_objects.append({
                     'class_name': class_name,
                     'confidence': confidence,
                     'mask': mask,
-                    'points_odom': points_odom,
+                    'points_map': points_map,
                     'clip_feature': feature
                 })
-
                 label = f"{class_name} {confidence:.2f}"
                 cv2.putText(visualization, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-            
-
         cv2.imshow("YOLO + MobileSAM", visualization)
         cv2.waitKey(1)
-
-
-
 def main(args=None):
     rclpy.init(args=args)
     node = YoloNode()
-
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
@@ -302,13 +272,9 @@ def main(args=None):
         node.map_manager.merge_duplicates()
         after = len(node.map_manager.objects)
         node.get_logger().info(f"[EndProcess] Final merge complete. Map size reduced from {before} to {after}")
-        
-        # Save the final merged map to JSON
         node.map_manager.save_map("final_map.json")
         node.get_logger().info("[EndProcess] Final map saved to final_map.json")
-        
         node.destroy_node()
         rclpy.shutdown()
-
 if __name__ == '__main__':
     main()
