@@ -15,10 +15,10 @@ CONFIG = {
     "camera_translation": [0.04, 0.000, 0.120],
     
     # Model Paths
-    "clip_checkpoint": "/home/deepak/InterIIT_practice/task_2/mobileclip_s2.pt",
+    "clip_checkpoint": "/home/deepak/InterIIT_practice/task_2/weights/mobileclip_s2.pt",
     "clip_model_name": "mobileclip_s2",
-    "yolo_checkpoint": "yolov8x-worldv2.pt",
-    "sam_checkpoint": "mobile_sam.pt",
+    "yolo_checkpoint": "weights/yolov8x-worldv2.pt",
+    "sam_checkpoint": "weights/mobile_sam.pt",
     "sam_model_type": "vit_t",
     
     # Post-processing Thresholds

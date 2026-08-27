@@ -1,14 +1,14 @@
 import numpy as np
 import json
-from local_object import LocalObject
-from tracker import Tracker
+from .local_object import LocalObject
+from .tracker import Tracker
 import time
 class MapManager:
     def __init__(self):
         self.objects = []
         self.next_object_id = 0
         self.tracker = Tracker()
-        self.log_file = "tracking_logs.json"
+        self.log_file = "json/tracking_logs.json"
         with open(self.log_file, "w") as f:
             json.dump([], f)
     def _append_log(self, log_entry):

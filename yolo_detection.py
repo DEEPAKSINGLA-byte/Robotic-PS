@@ -13,9 +13,9 @@ from nav_msgs.msg import Odometry, OccupancyGrid
 from PIL import Image as PILImage
 from scipy.spatial.transform import Rotation
 from message_filters import Subscriber, ApproximateTimeSynchronizer
-from config import CONFIG
-from local_object import LocalObject
-from map_manager import MapManager
+from semantic_mapping.config import CONFIG
+from semantic_mapping.local_object import LocalObject
+from semantic_mapping.map_manager import MapManager
 import tf2_ros
 from tf2_ros import TransformException
 class YoloNode(Node):
@@ -45,6 +45,10 @@ class YoloNode(Node):
         self.cy=None
         self.declare_parameter('global_frame', 'map')
         self.global_frame = self.get_parameter('global_frame').value
+        self.declare_parameter('spawn_x', -2.0)
+        self.declare_parameter('spawn_y', -0.5)
+        self.spawn_x = self.get_parameter('spawn_x').value
+        self.spawn_y = self.get_parameter('spawn_y').value
         self.rgb_sub = Subscriber(self, Image, CONFIG['rgb_topic'])
         self.depth_sub = Subscriber(self, Image, CONFIG['depth_topic'])
         self.odom_sub = Subscriber(self, Odometry, CONFIG['odom_topic'])
@@ -54,7 +58,13 @@ class YoloNode(Node):
             slop=CONFIG['sync_slop']
         )
         self.camera_translation = np.array(CONFIG['camera_translation'], dtype=np.float64)
-        self.camera_rotation = np.eye(3, dtype=np.float64)
+        # Convert from Camera Optical Frame (z-forward, x-right, y-down) 
+        # to Robot Base Frame (x-forward, y-left, z-up)
+        self.camera_rotation = np.array([
+            [ 0.0,  0.0,  1.0],
+            [-1.0,  0.0,  0.0],
+            [ 0.0, -1.0,  0.0]
+        ], dtype=np.float64)
         self.sync.registerCallback(self.synced_callback)
         self.costmap_sub = self.create_subscription(OccupancyGrid, '/global_costmap/costmap', self.costmap_callback, 10)
         self.occupancy_grid = None
@@ -273,9 +283,11 @@ class YoloNode(Node):
                             rotation_quat = [t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w]
                             R_map_odom = Rotation.from_quat(rotation_quat).as_matrix()
                             points_map = points_odom @ R_map_odom.T + translation
+                            # Shift points to match absolute Gazebo world origin
+                            points_map += np.array([self.spawn_x, self.spawn_y, 0.0])
                         except TransformException as ex:
                             self.get_logger().warn(f'Could not transform odom to {self.global_frame}: {ex}')
-                            points_map = points_odom # Fallback if TF is missing
+                            points_map = points_odom + np.array([self.spawn_x, self.spawn_y, 0.0]) # Fallback if TF is missing
                 overlay = visualization.copy()
                 overlay[mask] = (0, 255, 0)
                 visualization = cv2.addWeighted(visualization, 0.7, overlay, 0.3, 0)
@@ -309,8 +321,8 @@ def main(args=None):
         after = len(node.map_manager.objects)
         node.get_logger().info(f"[EndProcess] Final merge complete. Map size reduced from {before} to {after}")
         # Save the final merged map to JSON with navigation goals
-        node.map_manager.save_map("final_map.json", snap_func=node.get_safe_goal)
-        node.get_logger().info("[EndProcess] Final map saved to final_map.json")
+        node.map_manager.save_map("json/final_map.json", snap_func=node.get_safe_goal)
+        node.get_logger().info("[EndProcess] Final map saved to json/final_map.json")
         node.destroy_node()
         rclpy.shutdown()
 if __name__ == '__main__':
