@@ -1,12 +1,26 @@
 import os
 import json
+import threading
 from math import sqrt
 from typing import Optional
 from groq import Groq
-JSON_FILE = 'world.json'
+import rclpy
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
+
+JSON_FILE = 'json/final_map.json'
 MAX_CANDIDATES = 20
 NEAR_THRESHOLD = 2.0
 MODEL = 'openai/gpt-oss-20b'
+
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(env_path):
+    with open(env_path, 'r') as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                key, val = line.strip().split('=', 1)
+                os.environ[key.strip()] = val.strip()
+
 api_key = os.environ.get('GROQ_API_KEY')
 if not api_key:
     raise RuntimeError('GROQ_API_KEY environment variable is not set.')
@@ -116,9 +130,42 @@ def parse_command(command):
         previous_target_data = get_object_by_id(objects, previous_target)
         if previous_target_data is not None:
             previous_target_data = simplify_object(previous_target_data)
-    parser_schema = {'type': 'object', 'properties': {'target_class': {'type': ['string', 'null']}, 'reference_class': {'type': ['string', 'null']}, 'relation': {'type': ['string', 'null'], 'enum': ['near', None]}}, 'required': ['target_class', 'reference_class', 'relation'], 'additionalProperties': False}
-    system_prompt = '\nYou are the semantic command parser for a mobile robot.\nYour job is to identify the target object and optional spatial\nreference from the user\'s command.\nAvailable object classes:\n%s\nPrevious target:\n%s\nRules:\n1. target_class must be one of the available object classes,\n   unless no target can be identified, in which case use null.\n2. reference_class must be one of the available object classes,\n   or null.\n3. If the command expresses proximity such as:\n   near, beside, next to, close to, by\n   set relation to "near".\n4. If the user uses a pronoun such as:\n   it, that, this object\n   and a previous target exists, resolve the target to the\n   previous target\'s class.\n5. Do not invent classes.\nReturn only the requested JSON structure.\n' % (json.dumps(available_classes), json.dumps(previous_target_data) if previous_target_data is not None else 'null')
-    response = client.chat.completions.create(model=MODEL, messages=[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': command}], temperature=0, response_format={'type': 'json_schema', 'json_schema': {'name': 'command_query', 'strict': True, 'schema': parser_schema}})
+            
+    parser_schema = {
+        'type': 'object',
+        'properties': {
+            'action': {'type': ['string', 'null'], 'enum': ['navigate_to', 'traverse', None]},
+            'target_class': {'type': ['string', 'null']},
+            'reference_class': {'type': ['string', 'null']},
+            'relation': {'type': ['string', 'null'], 'enum': ['near', None]}
+        },
+        'required': ['action', 'target_class', 'reference_class', 'relation'],
+        'additionalProperties': False
+    }
+    
+    system_prompt = (
+        "\nYou are the semantic command parser for a mobile robot.\n"
+        "Your job is to identify the action, target object, and optional spatial reference.\n"
+        f"Available object classes:\n{json.dumps(available_classes)}\n"
+        f"Previous target:\n{json.dumps(previous_target_data) if previous_target_data is not None else 'null'}\n"
+        "Rules:\n"
+        "1. For commands such as 'go to', 'move to', 'navigate to', 'approach', set action = 'navigate_to'.\n"
+        "2. For commands such as 'go through', 'pass through', 'traverse', set action = 'traverse'.\n"
+        "3. target_class must be one of the available object classes, unless no target can be identified, in which case use null.\n"
+        "4. reference_class must be one of the available object classes, or null.\n"
+        "5. If the command expresses proximity ('near', 'beside', 'next to', 'close to', 'by'), set relation to 'near'.\n"
+        "6. If the user uses a pronoun ('it', 'that', 'this object') and a previous target exists, resolve the target to the previous target's class.\n"
+        "7. If you cannot determine the target object, set action, target_class, reference_class, and relation all to null.\n"
+        "8. Do not invent classes.\n"
+        "Return only the requested JSON structure.\n"
+    )
+    
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': command}],
+        temperature=0,
+        response_format={'type': 'json_schema', 'json_schema': {'name': 'command_query', 'strict': True, 'schema': parser_schema}}
+    )
     content = response.choices[0].message.content
     query = json.loads(content)
     return query
@@ -138,53 +185,47 @@ def generate_candidates(objects, query, near_threshold=NEAR_THRESHOLD):
     target_class = target_class.lower()
     if target_class not in available_classes:
         return []
+        
     if reference_class is not None and relation is not None:
         reference_class = reference_class.lower()
         if reference_class not in available_classes:
             return []
+            
         candidates = filter_by_spatial_relation(objects, target_class, reference_class, relation, near_threshold)
+        
+        if not candidates:
+            return []
+            
+        unique_candidates = {}
+        for candidate in candidates:
+            object_id = candidate['target']['object_id']
+            if object_id not in unique_candidates:
+                unique_candidates[object_id] = candidate
+                
+        candidates = list(unique_candidates.values())
+        
+        if robot_position is not None:
+            for candidate in candidates:
+                target_obj = get_object_by_id(objects, candidate['target']['object_id'])
+                candidate['robot_distance'] = distance_from_robot(target_obj)
+                
+            candidates.sort(
+                key=lambda x: x['robot_distance'] if x['robot_distance'] is not None else float('inf')
+            )
+            
         return candidates[:MAX_CANDIDATES]
+        
     target_objects = retrieve_objects(objects, target_class)
     candidates = []
     for obj in target_objects:
         simplified = simplify_object(obj)
         robot_distance = distance_from_robot(obj)
         candidates.append({'target': simplified, 'robot_distance': robot_distance})
+        
     if robot_position is not None:
         candidates.sort(key=lambda x: x['robot_distance'] if x['robot_distance'] is not None else float('inf'))
+        
     return candidates[:MAX_CANDIDATES]
-
-def select_task(command, query, candidates):
-    if not candidates:
-        raise RuntimeError('No valid object candidates found.')
-    candidate_json = json.dumps(candidates, indent=2)
-    previous_target = context['previous_target']
-    task_schema = {'type': 'object', 'properties': {'action': {'type': 'string', 'enum': ['navigate_to', 'traverse']}, 'object_id': {'type': 'integer'}}, 'required': ['action', 'object_id'], 'additionalProperties': False}
-    system_prompt = '\nYou are the final task-selection module for a mobile robot.\nThe user gave this command:\n%s\nParsed semantic query:\n%s\nPrevious target object ID:\n%s\nAvailable candidates:\n%s\nSelect exactly one object.\nRules:\n1. object_id MUST come from the candidate list.\n2. Never invent an object_id.\n3. For commands such as:\n   "go to"\n   "move to"\n   "navigate to"\n   "approach"\n   use:\n   action = "navigate_to"\n4. For commands such as:\n   "go through"\n   "pass through"\n   "traverse"\n   use:\n   action = "traverse"\n5. For "it", "that", or similar references, use the\n   previous target when it is the appropriate candidate.\n6. Return only the requested JSON.\n' % (command, json.dumps(query), json.dumps(previous_target), candidate_json)
-    response = client.chat.completions.create(model=MODEL, messages=[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': command}], temperature=0, response_format={'type': 'json_schema', 'json_schema': {'name': 'robot_task', 'strict': True, 'schema': task_schema}})
-    content = response.choices[0].message.content
-    task = json.loads(content)
-    return task
-
-def validate_task(task, candidates):
-    if not isinstance(task, dict):
-        raise ValueError('LLM task is not a dictionary.')
-    if 'action' not in task:
-        raise ValueError('LLM task missing action.')
-    if 'object_id' not in task:
-        raise ValueError('LLM task missing object_id.')
-    action = task['action']
-    object_id = task['object_id']
-    allowed_actions = {'navigate_to', 'traverse'}
-    if action not in allowed_actions:
-        raise ValueError(f'Invalid action: {action}')
-    candidate_ids = set()
-    for candidate in candidates:
-        if 'target' in candidate:
-            candidate_ids.add(candidate['target']['object_id'])
-    if object_id not in candidate_ids:
-        raise ValueError('LLM returned an object_id that was not present in the candidate list.')
-    return True
 
 def resolve_task(task, objects):
     object_id = task['object_id']
@@ -214,20 +255,51 @@ def update_context(command, task):
 
 def process_command(command):
     query = parse_command(command)
+    
+    if not query.get('action') or not query.get('target_class'):
+        return {'success': False, 'error': 'I could not determine the target object or action.', 'query': query}
+        
     candidates = generate_candidates(objects, query, NEAR_THRESHOLD)
     if not candidates:
         return {'success': False, 'error': 'No matching candidates found.', 'query': query}
-    task = select_task(command, query, candidates)
-    validate_task(task, candidates)
+        
+    best_candidate = candidates[0]
+    object_id = best_candidate['target']['object_id']
+    
+    task = {
+        'action': query['action'],
+        'object_id': object_id
+    }
+    
     resolved = resolve_task(task, objects)
     update_context(command, task)
     return {'success': True, 'command': command, 'query': query, 'candidates': candidates, 'task': task, 'resolved_object': resolved, 'context': context}
+
+def ros_spin_thread(node):
+    rclpy.spin(node)
+
 if __name__ == '__main__':
     print(f'Loaded {len(objects)} objects.')
     print('Available classes:')
     print(available_classes)
     print('\nRobot command interface.')
     print("Type 'exit' to quit.\n")
+    
+    rclpy.init()
+    node = rclpy.create_node('semantic_llm_commander')
+    goal_pub = node.create_publisher(PoseStamped, '/goal_pose', 10)
+    
+    def odom_callback(msg):
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        z = msg.pose.pose.position.z
+        set_robot_position([x, y, z])
+        
+    odom_sub = node.create_subscription(Odometry, '/odom', odom_callback, 10)
+    
+    spin_thread = threading.Thread(target=ros_spin_thread, args=(node,), daemon=True)
+    spin_thread.start()
+
     while True:
         command = input('Command > ').strip()
         if command.lower() in {'exit', 'quit'}:
@@ -237,5 +309,30 @@ if __name__ == '__main__':
         try:
             result = process_command(command)
             print(json.dumps(result, indent=2))
+            if result.get('success'):
+                task = result.get('task')
+                resolved = result.get('resolved_object')
+                if task and task.get('action') == 'navigate_to':
+                    goal = resolved.get('safe_nav_goal')
+                    if not goal:
+                        goal = resolved.get('centroid')
+                    if goal:
+                        pose_msg = PoseStamped()
+                        pose_msg.header.stamp = node.get_clock().now().to_msg()
+                        pose_msg.header.frame_id = 'map'
+                        pose_msg.pose.position.x = float(goal[0])
+                        pose_msg.pose.position.y = float(goal[1])
+                        pose_msg.pose.position.z = 0.0
+                        pose_msg.pose.orientation.w = 1.0
+                        goal_pub.publish(pose_msg)
+                        print(f"[Navigator] Published goal to /goal_pose: x={goal[0]:.2f}, y={goal[1]:.2f}")
+                    else:
+                        print("[Navigator] Error: No safe_nav_goal or centroid found for the target.")
+            else:
+                print(f"[Navigator] {result.get('error')}")
         except Exception as e:
             print(json.dumps({'success': False, 'error': str(e)}, indent=2))
+            
+    node.destroy_node()
+    if rclpy.ok():
+        rclpy.shutdown()
