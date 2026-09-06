@@ -27,18 +27,66 @@ def move_towards(drone, target, speed, dt):
     drone.y += direction_y * movement
 
     return movement, False
-def consume_battery(drone, distance):
+def calculate_energy_consumption(distance, payload):
     """
-    Reduce the drone's battery based on the distance travelled.
+    Calculate battery percentage consumed for a given distance and payload.
+
+    distance : distance travelled in simulation units
+    payload  : payload in kg
     """
 
-    # Temporary model:
-    # 100% battery = 2000 pixels of flight
-    battery_used = (distance / 2000.0) * 100.0
+    base_consumption = 100.0 / 2000.0
+
+    payload_factor = 1.0 + 0.5 * (payload / 2.5)
+
+    energy_used = distance * base_consumption * payload_factor
+
+    return energy_used
+
+def calculate_battery_consumption(time, payload):
+    """
+    Calculate battery percentage consumed during flight.
+    """
+
+    FULL_PAYLOAD = 2.5
+    FULL_PAYLOAD_ENDURANCE = 25 * 60
+
+    # Energy consumption rate at full payload.
+    full_payload_rate = 100.0 / FULL_PAYLOAD_ENDURANCE
+
+    # Assume empty flight consumes 70% of the full-payload rate.
+    empty_payload_rate = 0.7 * full_payload_rate
+
+    payload_ratio = payload / FULL_PAYLOAD
+
+    consumption_rate = (
+        empty_payload_rate
+        + payload_ratio * (full_payload_rate - empty_payload_rate)
+    )
+
+    return time * consumption_rate
+
+def pixels_to_meters(pixels):
+    """
+    Convert simulation pixels to physical metres.
+    Assuming 150 pixels/s in simulation corresponds to 12 m/s physical speed:
+    1 pixel = 12 / 150 = 0.08 metres.
+    """
+    return pixels * (12.0 / 150.0)
+
+def meters_to_pixels(meters):
+    """
+    Convert physical metres to simulation pixels.
+    """
+    return meters * (150.0 / 12.0)
+
+def consume_battery(drone, distance):
+    battery_used = calculate_energy_consumption(
+        distance,
+        drone.payload
+    )
 
     drone.battery -= battery_used
-
-    # Prevent battery from becoming negative
     drone.battery = max(0.0, drone.battery)
 
 def create_test_package():
@@ -58,17 +106,60 @@ def assign_test_drone(drone, package):
     drone.payload = package.weight
     package.assigned_drone = drone.id
 
+def calculate_speed(payload):
+    """
+    Calculate drone speed based on payload.
+
+    Maximum payload = 2.5 kg
+    """
+
+    max_speed = 150.0      # temporary simulation speed
+    max_payload = 2.5      # kg
+
+    if payload <= 0:
+        return max_speed
+
+    if payload >= max_payload:
+        return max_speed * 0.7
+
+    speed_factor = 1.0 - 0.3 * (payload / max_payload)
+
+    return max_speed * speed_factor
+
 def update_drone(drone, package, dt):
+    speed = calculate_speed(drone.payload)
+
     if drone.status == "DELIVERY":
-        distance_moved, reached = move_towards(drone, drone.target, 150, dt)
+        distance_moved, reached = move_towards(
+            drone, drone.target, speed, dt
+        )
+
         consume_battery(drone, distance_moved)
+
+        if drone.battery <= 0:
+            drone.battery = 0
+            drone.status = "FAILED"
+            drone.target = None
+            return
+
         if reached:
             package.delivered = True
             drone.status = "RETURNING"
             drone.target = (BASE[0], BASE[1])
+
     elif drone.status == "RETURNING":
-        distance_moved, reached = move_towards(drone, drone.target, 150, dt)
+        distance_moved, reached = move_towards(
+            drone, drone.target, speed, dt
+        )
+
         consume_battery(drone, distance_moved)
+
+        if drone.battery <= 0:
+            drone.battery = 0
+            drone.status = "FAILED"
+            drone.target = None
+            return
+
         if reached:
             drone.status = "IDLE"
             drone.payload = 0.0
