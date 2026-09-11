@@ -18,6 +18,7 @@ from semantic_mapping.local_object import LocalObject
 from semantic_mapping.map_manager import MapManager
 import tf2_ros
 from tf2_ros import TransformException
+from sklearn.cluster import DBSCAN
 class YoloNode(Node):
     def __init__(self):
         super().__init__(
@@ -58,8 +59,6 @@ class YoloNode(Node):
             slop=CONFIG['sync_slop']
         )
         self.camera_translation = np.array(CONFIG['camera_translation'], dtype=np.float64)
-        # Convert from Camera Optical Frame (z-forward, x-right, y-down) 
-        # to Robot Base Frame (x-forward, y-left, z-up)
         self.camera_rotation = np.array([
             [ 0.0,  0.0,  1.0],
             [-1.0,  0.0,  0.0],
@@ -97,6 +96,26 @@ class YoloNode(Node):
         t_odom_camera=R_odom_base @ t_base_camera + translation
         points_odom = points_camera @ R_odom_camera.T + t_odom_camera
         return points_odom
+    def apply_dbscan(self, points):
+        if points is None or len(points) == 0:
+            return None
+            
+        # Use Open3D's optimized DBSCAN instead of sklearn for massive performance gains
+        import open3d as o3d
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+        
+        # DualMap uses eps=0.02, we'll use 0.05 as a safe middle ground
+        labels = np.array(pcd.cluster_dbscan(eps=0.05, min_points=10, print_progress=False))
+        
+        valid_labels = labels[labels != -1]
+        if len(valid_labels) == 0:
+            return points
+            
+        largest_cluster = np.bincount(valid_labels).argmax()
+        filtered_points = points[labels == largest_cluster]
+        return filtered_points
+        
     def merge_timer_callback(self):
         before = len(self.map_manager.objects)
         self.map_manager.merge_duplicates()
@@ -273,7 +292,6 @@ class YoloNode(Node):
                     points_map = None
                     if points_odom is not None:
                         try:
-                            # Lookup transform from odom to map (global_frame)
                             t = self.tf_buffer.lookup_transform(
                                 self.global_frame,
                                 'odom',
@@ -283,11 +301,12 @@ class YoloNode(Node):
                             rotation_quat = [t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w]
                             R_map_odom = Rotation.from_quat(rotation_quat).as_matrix()
                             points_map = points_odom @ R_map_odom.T + translation
-                            # Shift points to match absolute Gazebo world origin
                             points_map += np.array([self.spawn_x, self.spawn_y, 0.0])
+                            points_map = self.apply_dbscan(points_map)
+                            
                         except TransformException as ex:
                             self.get_logger().warn(f'Could not transform odom to {self.global_frame}: {ex}')
-                            points_map = points_odom + np.array([self.spawn_x, self.spawn_y, 0.0]) # Fallback if TF is missing
+                            points_map = points_odom + np.array([self.spawn_x, self.spawn_y, 0.0])
                 overlay = visualization.copy()
                 overlay[mask] = (0, 255, 0)
                 visualization = cv2.addWeighted(visualization, 0.7, overlay, 0.3, 0)
@@ -320,7 +339,6 @@ def main(args=None):
         node.map_manager.merge_duplicates()
         after = len(node.map_manager.objects)
         node.get_logger().info(f"[EndProcess] Final merge complete. Map size reduced from {before} to {after}")
-        # Save the final merged map to JSON with navigation goals
         node.map_manager.save_map("json/final_map.json", snap_func=node.get_safe_goal)
         node.get_logger().info("[EndProcess] Final map saved to json/final_map.json")
         node.destroy_node()

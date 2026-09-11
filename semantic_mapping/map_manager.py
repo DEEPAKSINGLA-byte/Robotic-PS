@@ -95,11 +95,16 @@ class MapManager:
     def save_map(self, filepath="final_map.json", snap_func=None):
         final_objects = []
         for obj in self.objects:
+            # Thresholding: Delete ghost objects/hallucinations seen fewer than 3 times
+            obs_count = getattr(obj, 'observation_count', 1)
+            if obs_count < 3:
+                continue
+                
             obj_data = {
                 "object_id": obj.id,
                 "class_name": obj.class_name,
                 "points_count": len(obj.points),
-                "observations": getattr(obj, 'observation_count', 1),
+                "observations": obs_count,
                 "centroid": obj.centroid.tolist() if len(obj.points) > 0 else None,
                 "min_bound": obj.min_bound.tolist() if len(obj.points) > 0 else None,
                 "max_bound": obj.max_bound.tolist() if len(obj.points) > 0 else None
