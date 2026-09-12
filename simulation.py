@@ -186,6 +186,18 @@ def is_mission_feasible(drone, package, sim_time):
         return False
     return True
 
+def get_feasible_drones(drones, package, sim_time):
+    feasible = []
+
+    for drone in drones.values():
+        if drone.status != "IDLE":
+            continue
+
+        if is_mission_feasible(drone, package, sim_time):
+            feasible.append(drone)
+
+    return feasible
+
 def calculate_speed(payload):
     max_speed = 12.0
     max_payload = 2.5
@@ -218,6 +230,7 @@ def update_drone(drone, packages, dt, charging_pads):
             )
             
             drone.total_distance += distance_moved
+            drone.total_flight_time += actual_time
 
             consume_battery(drone, actual_time)
 
@@ -248,6 +261,7 @@ def update_drone(drone, packages, dt, charging_pads):
             )
             
             drone.total_distance += distance_moved
+            drone.total_flight_time += actual_time
 
             consume_battery(drone, actual_time)
 
@@ -303,7 +317,60 @@ def calculate_mission_time(drone, package):
 def calculate_mission_distance(drone, package):
     to_package = math.sqrt((package.x - drone.x)**2 + (package.y - drone.y)**2)
     to_base = math.sqrt((BASE[0] - package.x)**2 + (BASE[1] - package.y)**2)
-    return to_package + to_base
+    return pixels_to_meters(to_package) + pixels_to_meters(to_base)
+
+def calculate_assignment_features(drones, drone_id, package, sim_time):
+    drone = drones[drone_id]
+    
+    # 1. Deadline slack
+    mission_time = calculate_mission_time(drone, package)
+    remaining_deadline = package.deadline - sim_time
+    slack = remaining_deadline - mission_time
+    urgency = 1.0 / max(slack, 1.0)
+    
+    # 2. Energy fraction
+    required_energy = calculate_required_battery(drone, package)
+    energy_cost = required_energy / max(drone.battery, 1e-6)
+    
+    # 3. Distance
+    distance = calculate_mission_distance(drone, package)
+    
+    return {
+        "drone_id": drone.id,
+        "urgency": urgency,
+        "energy_cost": energy_cost,
+        "raw_distance": distance,
+        "raw_utilization": drone.total_flight_time,
+        "charging_risk": 1.0 if (drone.battery - required_energy) < 0.20 * drone.battery_capacity else 0.0,
+        "slack": slack
+    }
+
+def calculate_assignment_score(features, max_distance, max_flight_time):
+    W_DEADLINE = 10.0
+    W_ENERGY = 3.0
+    W_DISTANCE = 1.0
+    W_BALANCE = 2.0
+    W_CHARGE = 4.0
+    
+    normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
+    utilization_cost = features["raw_utilization"] / max(max_flight_time, 1e-6)
+    
+    score = (
+        W_DEADLINE * features["urgency"]
+        + W_ENERGY * features["energy_cost"]
+        + W_DISTANCE * normalized_distance
+        + W_BALANCE * utilization_cost
+        + W_CHARGE * features["charging_risk"]
+    )
+    
+    return {
+        "score": score,
+        "deadline": W_DEADLINE * features["urgency"],
+        "energy": W_ENERGY * features["energy_cost"],
+        "distance": W_DISTANCE * normalized_distance,
+        "balance": W_BALANCE * utilization_cost,
+        "charging": W_CHARGE * features["charging_risk"]
+    }
 
 def get_next_package(packages):
     for package in packages.values():
@@ -351,6 +418,60 @@ def assign_packages_baseline(drones, packages, sim_time):
             assign_package(drone, package)
         else:
             package.assigned_drone = -1
+
+def assign_packages_v1(drones, packages, sim_time):
+    for package in packages.values():
+        if package.delivered:
+            continue
+        if package.assigned_drone is not None:
+            continue
+
+        feasible_drones = get_feasible_drones(drones, package, sim_time)
+        
+        if not feasible_drones:
+            # We don't mark as impossible yet unless strictly needed, but baseline did.
+            # Actually, baseline only marked if the single chosen drone was infeasible.
+            # If no drones are feasible right now, they might be charging.
+            # So we leave it unassigned to retry later.
+            continue
+            
+        features_list = []
+        for drone in feasible_drones:
+            features_list.append(calculate_assignment_features(drones, drone.id, package, sim_time))
+            
+        max_distance = max((f["raw_distance"] for f in features_list), default=1e-6)
+        max_flight_time = max((drones[d.id].total_flight_time for d in feasible_drones), default=1e-6)
+        
+        best_drone = None
+        best_score = float('inf')
+        best_details = None
+        all_scores = {}
+        
+        for f in features_list:
+            score_details = calculate_assignment_score(f, max_distance, max_flight_time)
+            all_scores[f["drone_id"]] = score_details
+            if score_details["score"] < best_score:
+                best_score = score_details["score"]
+                best_drone = drones[f["drone_id"]]
+                best_details = score_details
+                
+        assign_package(best_drone, package)
+        
+        # Log WHY
+        print(f"\nPackage {package.id} -> Drone {best_drone.id}")
+        print(f"  D{best_drone.id} score = {best_details['score']:.2f}")
+        print(f"      deadline = {best_details['deadline']:.2f}")
+        print(f"      energy   = {best_details['energy']:.2f}")
+        print(f"      distance = {best_details['distance']:.2f}")
+        print(f"      balance  = {best_details['balance']:.2f}")
+        print(f"      charging = {best_details['charging']:.2f}")
+        print("  Alternatives:")
+        for drone in drones.values():
+            if drone.id in all_scores:
+                mark = "  <- selected" if drone.id == best_drone.id else ""
+                print(f"      D{drone.id} = {all_scores[drone.id]['score']:.2f}{mark}")
+            else:
+                print(f"      D{drone.id} = infeasible")
 
 def validate_fleet(drones, charging_pads, packages):
     validate_simulation(drones, charging_pads)
