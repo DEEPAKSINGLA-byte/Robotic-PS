@@ -120,52 +120,30 @@ def consume_battery(drone, dt):
         drone.cycle_energy -= 100.0
         apply_battery_degradation(drone)
 
-def create_test_packages():
-    return {
-        1: PackageState(
-            id=1,
-            x=550.0,
-            y=300.0,
-            weight=1.0,
-            request_time=0.0,
-            deadline=60.0,
-            assigned_drone=None,
-            delivered=False
-        ),
+def should_create_package(sim_time):
+    # Deterministic arrivals every 20 seconds
+    return sim_time > 0 and (sim_time % 20.0) < 0.001
 
-        2: PackageState(
-            id=2,
-            x=650.0,
-            y=450.0,
-            weight=1.5,
-            request_time=0.0,
-            deadline=90.0,
-            assigned_drone=None,
-            delivered=False
-        ),
-
-        3: PackageState(
-            id=3,
-            x=300.0,
-            y=500.0,
-            weight=2.0,
-            request_time=0.0,
-            deadline=120.0,
-            assigned_drone=None,
-            delivered=False
-        ),
-
-        4: PackageState(
-            id=4,
-            x=600.0,
-            y=350.0,
-            weight=3.0,
-            request_time=0.0,
-            deadline=60.0,
-            assigned_drone=None,
-            delivered=False
-        ),
-    }
+def generate_package(package_id, sim_time):
+    # Basic deterministic pattern
+    dx = [100, -100, 200, -200, 300, -300, 150, -150, 250, -250]
+    dy = [100, 150, -100, -150, 200, 250, -200, -250, 50, -50]
+    idx = package_id % 10
+    x = BASE[0] + dx[idx]
+    y = BASE[1] + dy[idx]
+    weight = 1.0 + (package_id % 3) * 0.5
+    deadline = sim_time + 100.0
+    
+    return PackageState(
+        id=package_id,
+        x=float(x),
+        y=float(y),
+        weight=weight,
+        request_time=sim_time,
+        deadline=deadline,
+        assigned_drone=None,
+        delivered=False
+    )
 
 def assign_package(drone, package):
     drone.status = "DELIVERY"
@@ -334,28 +312,78 @@ def get_next_package(packages):
 
     return None
 
+def validate_simulation(drones, charging_pads):
+    for drone in drones.values():
+        assert drone.battery >= 0.0, f"Drone {drone.id} battery negative: {drone.battery}"
+        assert drone.battery <= drone.battery_capacity + 1e-6, f"Drone {drone.id} battery exceeds capacity"
+
+        if drone.status == "CHARGING":
+            assert drone.charging_pad is not None, f"Drone {drone.id} charging but no pad"
+            assert charging_pads[drone.charging_pad] == drone.id, f"Pad {drone.charging_pad} doesn't match drone {drone.id}"
+        else:
+            assert drone.charging_pad is None, f"Drone {drone.id} not charging but has pad {drone.charging_pad}"
+
+    for pad_id, drone_id in charging_pads.items():
+        if drone_id is not None:
+            assert drone_id in drones
+            drone = drones[drone_id]
+            assert drone.status == "CHARGING", f"Pad {pad_id} has drone {drone_id} but status is {drone.status}"
+            assert drone.charging_pad == pad_id, f"Drone {drone_id} on pad {pad_id} thinks it's on {drone.charging_pad}"
+
+def get_idle_drone(drones):
+    for drone in drones.values():
+        if drone.status == "IDLE":
+            return drone
+    return None
+
+def assign_packages_baseline(drones, packages, sim_time):
+    for package in packages.values():
+        if package.delivered:
+            continue
+        if package.assigned_drone is not None:
+            continue
+
+        drone = get_idle_drone(drones)
+        if drone is None:
+            continue
+
+        if is_mission_feasible(drone, package, sim_time):
+            assign_package(drone, package)
+        else:
+            package.assigned_drone = -1
+
+def validate_fleet(drones, charging_pads, packages):
+    validate_simulation(drones, charging_pads)
+
+    for drone in drones.values():
+        if drone.current_package is not None:
+            package = packages[drone.current_package]
+            assert package.assigned_drone == drone.id, f"Drone {drone.id} carries package {package.id} but package thinks it's assigned to {package.assigned_drone}"
+
+    for package in packages.values():
+        if package.assigned_drone not in (None, -1):
+            assert package.assigned_drone in drones, f"Package {package.id} assigned to invalid drone {package.assigned_drone}"
+
 def run_simulation_step(drone, packages, dt, sim_time, charging_pads):
-
-    if drone.status == "IDLE":
-
-        package = get_next_package(packages)
-
-        if package is not None:
-            if is_mission_feasible(drone, package, sim_time):
-                assign_package(drone, package)
-            else:
-                print(f"Package {package.id} is not feasible. Marking as impossible.")
-                package.assigned_drone = -1
-
     update_drone(drone, packages, dt, charging_pads)
 
-def initialize_drones():
+def initialize_drones(num_drones=10):
     drones = {}
-    batteries = [20.0, 30.0, 40.0, 50.0]
-    for i in range(1, 5):
+    for i in range(1, num_drones + 1):
         drones[i] = DroneState(
-            id=i, x=float(BASE[0]), y=float(BASE[1]), battery=batteries[i-1],
-            status="IDLE", payload=0.0, target=None
+            id=i,
+            x=float(BASE[0]),
+            y=float(BASE[1]),
+            battery=100.0,
+            battery_capacity=100.0,
+            cycle_count=0,
+            cycle_energy=0.0,
+            status="IDLE",
+            payload=0.0,
+            target=None,
+            total_distance=0.0,
+            charging_pad=None,
+            charge_remaining=0.0
         )
     return drones
 
@@ -384,6 +412,8 @@ def main():
                 f"pad={drone.charging_pad}"
             )
             run_simulation_step(drone, packages, dt_sim, sim_time, charging_pads)
+        
+        validate_simulation(drones, charging_pads)
         
         sim_time += dt_sim
         
