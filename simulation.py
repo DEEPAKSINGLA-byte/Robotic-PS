@@ -69,6 +69,42 @@ def apply_battery_degradation(drone):
     # Battery can never exceed the new degraded capacity
     drone.battery = min(drone.battery, drone.battery_capacity)
 
+FULL_CHARGE_TIME = 40 * 60
+
+def calculate_charge_time(drone):
+    missing_fraction = (
+        drone.battery_capacity - drone.battery
+    ) / drone.battery_capacity
+    return FULL_CHARGE_TIME * missing_fraction
+
+def get_free_charging_pad(charging_pads):
+    for pad_id, drone_id in charging_pads.items():
+        if drone_id is None:
+            return pad_id
+    return None
+
+def start_charging(drone, charging_pads):
+    pad_id = get_free_charging_pad(charging_pads)
+    if pad_id is None:
+        return False
+    charging_pads[pad_id] = drone.id
+    drone.charging_pad = pad_id
+    drone.status = "CHARGING"
+    drone.charge_remaining = calculate_charge_time(drone)
+    return True
+
+def update_charging(drone, dt, charging_pads):
+    drone.charge_remaining -= dt
+    if drone.charge_remaining > 0:
+        return
+    drone.battery = drone.battery_capacity
+    pad_id = drone.charging_pad
+    if pad_id is not None:
+        charging_pads[pad_id] = None
+    drone.charging_pad = None
+    drone.charge_remaining = 0.0
+    drone.status = "IDLE"
+
 def consume_battery(drone, dt):
     battery_used = calculate_battery_consumption(
         dt,
@@ -182,21 +218,19 @@ def calculate_speed(payload):
     speed_factor = 1.0 - 0.3 * (payload / max_payload)
     return max_speed * speed_factor
 
-def update_drone(drone, packages, dt):
+def update_drone(drone, packages, dt, charging_pads):
 
     remaining_dt = dt
 
     while remaining_dt > 0:
 
-        if drone.current_package is None:
-            return
-
-        package = packages[drone.current_package]
-
         speed_meters = calculate_speed(drone.payload)
         speed_pixels = meters_to_pixels(speed_meters)
 
         if drone.status == "DELIVERY":
+            if drone.current_package is None:
+                return
+            package = packages[drone.current_package]
 
             distance_moved, actual_time, reached = move_towards(
                 drone,
@@ -248,12 +282,27 @@ def update_drone(drone, packages, dt):
                 return
 
             if reached:
-                drone.status = "IDLE"
-                drone.payload = 0.0
                 drone.target = None
+                drone.payload = 0.0
+
+                if drone.battery < drone.battery_capacity:
+                    if not start_charging(drone, charging_pads):
+                        drone.status = "WAITING_FOR_CHARGE"
+                else:
+                    drone.status = "IDLE"
+
                 drone.current_package = None
 
                 continue
+
+        elif drone.status == "CHARGING":
+            update_charging(drone, remaining_dt, charging_pads)
+            return
+
+        elif drone.status == "WAITING_FOR_CHARGE":
+            if start_charging(drone, charging_pads):
+                return
+            return
 
         else:
             return
@@ -285,7 +334,7 @@ def get_next_package(packages):
 
     return None
 
-def run_simulation_step(drone, packages, dt, sim_time):
+def run_simulation_step(drone, packages, dt, sim_time, charging_pads):
 
     if drone.status == "IDLE":
 
@@ -298,21 +347,24 @@ def run_simulation_step(drone, packages, dt, sim_time):
                 print(f"Package {package.id} is not feasible. Marking as impossible.")
                 package.assigned_drone = -1
 
-    update_drone(drone, packages, dt)
+    update_drone(drone, packages, dt, charging_pads)
 
 def initialize_drones():
     drones = {}
-    drones[1] = DroneState(
-        id=1, x=float(BASE[0]), y=float(BASE[1]), battery=100.0,
-        status="IDLE", payload=0.0, target=None
-    )
+    batteries = [20.0, 30.0, 40.0, 50.0]
+    for i in range(1, 5):
+        drones[i] = DroneState(
+            id=i, x=float(BASE[0]), y=float(BASE[1]), battery=batteries[i-1],
+            status="IDLE", payload=0.0, target=None
+        )
     return drones
 
 def main():
     drones = initialize_drones()
     packages = create_test_packages()
+    charging_pads = {1: None, 2: None, 3: None}
     
-    env = Drone2DEnvironment(num_drones=1)
+    env = Drone2DEnvironment(num_drones=4)
     cv2.namedWindow("Drone 2D Environment", cv2.WINDOW_NORMAL)
     
     dt_real = 0.1
@@ -321,42 +373,28 @@ def main():
     
     while True:
         dt_sim = dt_real * TIME_SCALE
-        drone = drones[1]
         
-        print(
-            f"BEFORE: "
-            f"time={sim_time:.1f}s "
-            f"status={drone.status} "
-            f"battery={drone.battery:.2f}/"
-            f"{drone.battery_capacity:.2f} "
-            f"cycles={drone.cycle_count} "
-            f"package={drone.current_package}"
-        )
-        
-        for pkg in packages.values():
-            remaining = pkg.deadline - sim_time
+        print("PADS:", charging_pads)
+        for drone in drones.values():
             print(
-                f"Package {pkg.id}: "
-                f"deadline={pkg.deadline:.1f}s "
-                f"remaining={remaining:.1f}s "
-                f"delivered={pkg.delivered}"
+                f"D{drone.id}: "
+                f"status={drone.status} "
+                f"battery={drone.battery:.2f}/"
+                f"{drone.battery_capacity:.2f} "
+                f"pad={drone.charging_pad}"
             )
-        
-        run_simulation_step(drone, packages, dt_sim, sim_time)
+            run_simulation_step(drone, packages, dt_sim, sim_time, charging_pads)
         
         sim_time += dt_sim
         
-        print(
-            f"AFTER : time={sim_time:.1f}s "
-            f"status={drone.status} "
-            f"battery={drone.battery:.2f}% "
-            f"current_package={drone.current_package}"
-        )
+        # Determine pad_occupancy array for UI visualization
+        pad_occupancy_list = [charging_pads[1], charging_pads[2], charging_pads[3]]
         
         env.update_state(
             drones=drones,
             packages=packages,
-            message=f"D1: {drone.status}"
+            pad_occupancy=pad_occupancy_list,
+            message=f"Sim Time: {sim_time:.1f}s"
         )
         
         frame = env.draw()
@@ -367,7 +405,7 @@ def main():
             print("\nALL FEASIBLE PACKAGES DELIVERED (OR REJECTED)")
             break
             
-        if drone.status == "FAILED":
+        if any(drone.status == "FAILED" for drone in drones.values()):
             print("\nDRONE FAILED")
             break
             

@@ -51,6 +51,9 @@ class DroneState:
     battery_capacity: float = 100.0
     cycle_count: int = 0
     cycle_energy: float = 0.0
+    charging_pad: Optional[int] = None
+    charge_start_time: Optional[float] = None
+    charge_remaining: float = 0.0
 
 
 @dataclass
