@@ -322,11 +322,12 @@ def calculate_mission_distance(drone, package):
 def calculate_assignment_features(drones, drone_id, package, sim_time):
     drone = drones[drone_id]
     
-    # 1. Deadline slack
+    # 1. Deadline slack fraction
     mission_time = calculate_mission_time(drone, package)
     remaining_deadline = package.deadline - sim_time
     slack = remaining_deadline - mission_time
-    urgency = 1.0 / max(slack, 1.0)
+    slack_fraction = slack / max(remaining_deadline, 1e-6)
+    deadline_cost = 1.0 - slack_fraction
     
     # 2. Energy fraction
     required_energy = calculate_required_battery(drone, package)
@@ -335,17 +336,26 @@ def calculate_assignment_features(drones, drone_id, package, sim_time):
     # 3. Distance
     distance = calculate_mission_distance(drone, package)
     
+    # 4. Charging risk
+    remaining_fraction = (drone.battery - required_energy) / max(drone.battery_capacity, 1e-6)
+    if remaining_fraction > 0.30:
+        charging_risk = 0.0
+    elif remaining_fraction > 0.15:
+        charging_risk = 0.5
+    else:
+        charging_risk = 1.0
+    
     return {
         "drone_id": drone.id,
-        "urgency": urgency,
+        "deadline_cost": deadline_cost,
         "energy_cost": energy_cost,
         "raw_distance": distance,
         "raw_utilization": drone.total_flight_time,
-        "charging_risk": 1.0 if (drone.battery - required_energy) < 0.20 * drone.battery_capacity else 0.0,
+        "charging_risk": charging_risk,
         "slack": slack
     }
 
-def calculate_assignment_score(features, max_distance, max_flight_time):
+def calculate_assignment_score(features, max_distance, avg_flight_time):
     W_DEADLINE = 10.0
     W_ENERGY = 3.0
     W_DISTANCE = 1.0
@@ -353,22 +363,22 @@ def calculate_assignment_score(features, max_distance, max_flight_time):
     W_CHARGE = 4.0
     
     normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
-    utilization_cost = features["raw_utilization"] / max(max_flight_time, 1e-6)
+    balance_cost = features["raw_utilization"] / max(avg_flight_time, 1e-6)
     
     score = (
-        W_DEADLINE * features["urgency"]
+        W_DEADLINE * features["deadline_cost"]
         + W_ENERGY * features["energy_cost"]
         + W_DISTANCE * normalized_distance
-        + W_BALANCE * utilization_cost
+        + W_BALANCE * balance_cost
         + W_CHARGE * features["charging_risk"]
     )
     
     return {
         "score": score,
-        "deadline": W_DEADLINE * features["urgency"],
+        "deadline": W_DEADLINE * features["deadline_cost"],
         "energy": W_ENERGY * features["energy_cost"],
         "distance": W_DISTANCE * normalized_distance,
-        "balance": W_BALANCE * utilization_cost,
+        "balance": W_BALANCE * balance_cost,
         "charging": W_CHARGE * features["charging_risk"]
     }
 
@@ -440,7 +450,7 @@ def assign_packages_v1(drones, packages, sim_time):
             features_list.append(calculate_assignment_features(drones, drone.id, package, sim_time))
             
         max_distance = max((f["raw_distance"] for f in features_list), default=1e-6)
-        max_flight_time = max((drones[d.id].total_flight_time for d in feasible_drones), default=1e-6)
+        avg_flight_time = sum(d.total_flight_time for d in drones.values()) / len(drones)
         
         best_drone = None
         best_score = float('inf')
@@ -448,7 +458,7 @@ def assign_packages_v1(drones, packages, sim_time):
         all_scores = {}
         
         for f in features_list:
-            score_details = calculate_assignment_score(f, max_distance, max_flight_time)
+            score_details = calculate_assignment_score(f, max_distance, avg_flight_time)
             all_scores[f["drone_id"]] = score_details
             if score_details["score"] < best_score:
                 best_score = score_details["score"]
