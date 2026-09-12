@@ -4,21 +4,34 @@ from drone_sim import DroneState, PackageState, BASE, Drone2DEnvironment
 
 def move_towards(drone, target, speed, dt):
     target_x, target_y = target
+
     dx = target_x - drone.x
     dy = target_y - drone.y
+
     distance = math.sqrt(dx * dx + dy * dy)
+
     if distance == 0:
-        return 0.0, True
+        return 0.0, 0.0, True
+
     movement = speed * dt
+
     if movement >= distance:
+        # Drone reaches target before dt is finished
+        actual_time = distance / speed
+
         drone.x = target_x
         drone.y = target_y
-        return distance, True
+
+        return distance, actual_time, True
+
+    # Drone does not reach target
     direction_x = dx / distance
     direction_y = dy / distance
+
     drone.x += direction_x * movement
     drone.y += direction_y * movement
-    return movement, False
+
+    return movement, dt, False
 
 def calculate_energy_consumption(distance, payload):
     base_consumption = 100.0 / 2000.0
@@ -49,21 +62,80 @@ def calculate_travel_time(distance_pixels, payload):
         return float("inf")
     return distance_meters / speed
 
+def apply_battery_degradation(drone):
+    drone.cycle_count += 1
+    drone.battery_capacity *= 0.9995
+
+    # Battery can never exceed the new degraded capacity
+    drone.battery = min(drone.battery, drone.battery_capacity)
+
 def consume_battery(drone, dt):
-    battery_used = calculate_battery_consumption(dt, drone.payload)
+    battery_used = calculate_battery_consumption(
+        dt,
+        drone.payload
+    )
+
     drone.battery -= battery_used
     drone.battery = max(0.0, drone.battery)
 
-def create_test_package():
-    return PackageState(
-        id=1, x=BASE[0] + 1500, y=BASE[1], weight=2.5, deadline_remaining=2000.0,
-        assigned_drone=None, delivered=False
-    )
+    drone.cycle_energy += battery_used
 
-def assign_test_drone(drone, package):
+    while drone.cycle_energy >= 100.0:
+        drone.cycle_energy -= 100.0
+        apply_battery_degradation(drone)
+
+def create_test_packages():
+    return {
+        1: PackageState(
+            id=1,
+            x=550.0,
+            y=300.0,
+            weight=1.0,
+            request_time=0.0,
+            deadline=60.0,
+            assigned_drone=None,
+            delivered=False
+        ),
+
+        2: PackageState(
+            id=2,
+            x=650.0,
+            y=450.0,
+            weight=1.5,
+            request_time=0.0,
+            deadline=90.0,
+            assigned_drone=None,
+            delivered=False
+        ),
+
+        3: PackageState(
+            id=3,
+            x=300.0,
+            y=500.0,
+            weight=2.0,
+            request_time=0.0,
+            deadline=120.0,
+            assigned_drone=None,
+            delivered=False
+        ),
+
+        4: PackageState(
+            id=4,
+            x=600.0,
+            y=350.0,
+            weight=3.0,
+            request_time=0.0,
+            deadline=60.0,
+            assigned_drone=None,
+            delivered=False
+        ),
+    }
+
+def assign_package(drone, package):
     drone.status = "DELIVERY"
     drone.target = (package.x, package.y)
     drone.payload = package.weight
+    drone.current_package = package.id
     package.assigned_drone = drone.id
 
 def calculate_required_battery(drone, package):
@@ -84,11 +156,16 @@ def calculate_required_battery(drone, package):
     
     return delivery_battery + return_battery
 
-def is_mission_feasible(drone, package):
+def calculate_battery_margin(drone, package):
+    required = calculate_required_battery(drone, package)
+    return drone.battery - required
+
+def is_mission_feasible(drone, package, sim_time):
     if package.weight > 2.5:
         return False
+    remaining_deadline = package.deadline - sim_time
     mission_time = calculate_mission_time(drone, package)
-    if mission_time > package.deadline_remaining:
+    if mission_time > remaining_deadline:
         return False
     required_battery = calculate_required_battery(drone, package)
     if required_battery > drone.battery:
@@ -105,40 +182,81 @@ def calculate_speed(payload):
     speed_factor = 1.0 - 0.3 * (payload / max_payload)
     return max_speed * speed_factor
 
-def update_drone(drone, package, dt):
-    speed_meters = calculate_speed(drone.payload)
-    speed_pixels = meters_to_pixels(speed_meters)
+def update_drone(drone, packages, dt):
 
-    if drone.status == "DELIVERY":
-        distance_moved, reached = move_towards(drone, drone.target, speed_pixels, dt)
-        consume_battery(drone, dt)
-        
-        if drone.battery <= 0:
-            drone.battery = 0
-            drone.status = "FAILED"
-            drone.target = None
-            return
-            
-        if reached:
-            package.delivered = True
-            drone.payload = 0.0
-            drone.status = "RETURNING"
-            drone.target = (BASE[0], BASE[1])
+    remaining_dt = dt
 
-    elif drone.status == "RETURNING":
-        distance_moved, reached = move_towards(drone, drone.target, speed_pixels, dt)
-        consume_battery(drone, dt)
-        
-        if drone.battery <= 0:
-            drone.battery = 0
-            drone.status = "FAILED"
-            drone.target = None
+    while remaining_dt > 0:
+
+        if drone.current_package is None:
             return
+
+        package = packages[drone.current_package]
+
+        speed_meters = calculate_speed(drone.payload)
+        speed_pixels = meters_to_pixels(speed_meters)
+
+        if drone.status == "DELIVERY":
+
+            distance_moved, actual_time, reached = move_towards(
+                drone,
+                drone.target,
+                speed_pixels,
+                remaining_dt
+            )
             
-        if reached:
-            drone.status = "IDLE"
-            drone.payload = 0.0
-            drone.target = None
+            drone.total_distance += distance_moved
+
+            consume_battery(drone, actual_time)
+
+            remaining_dt -= actual_time
+
+            if drone.battery <= 0:
+                drone.battery = 0.0
+                drone.status = "FAILED"
+                drone.target = None
+                return
+
+            if reached:
+                package.delivered = True
+
+                drone.payload = 0.0
+                drone.status = "RETURNING"
+                drone.target = (BASE[0], BASE[1])
+
+                continue
+
+        elif drone.status == "RETURNING":
+
+            distance_moved, actual_time, reached = move_towards(
+                drone,
+                drone.target,
+                speed_pixels,
+                remaining_dt
+            )
+            
+            drone.total_distance += distance_moved
+
+            consume_battery(drone, actual_time)
+
+            remaining_dt -= actual_time
+
+            if drone.battery <= 0:
+                drone.battery = 0.0
+                drone.status = "FAILED"
+                drone.target = None
+                return
+
+            if reached:
+                drone.status = "IDLE"
+                drone.payload = 0.0
+                drone.target = None
+                drone.current_package = None
+
+                continue
+
+        else:
+            return
 
 def calculate_mission_time(drone, package):
     to_package_pixels = math.sqrt((package.x - drone.x)**2 + (package.y - drone.y)**2)
@@ -160,9 +278,27 @@ def calculate_mission_distance(drone, package):
     to_base = math.sqrt((BASE[0] - package.x)**2 + (BASE[1] - package.y)**2)
     return to_package + to_base
 
-def run_simulation_step(drones, package, dt):
-    for drone in drones.values():
-        update_drone(drone, package, dt)
+def get_next_package(packages):
+    for package in packages.values():
+        if not package.delivered and package.assigned_drone is None:
+            return package
+
+    return None
+
+def run_simulation_step(drone, packages, dt, sim_time):
+
+    if drone.status == "IDLE":
+
+        package = get_next_package(packages)
+
+        if package is not None:
+            if is_mission_feasible(drone, package, sim_time):
+                assign_package(drone, package)
+            else:
+                print(f"Package {package.id} is not feasible. Marking as impossible.")
+                package.assigned_drone = -1
+
+    update_drone(drone, packages, dt)
 
 def initialize_drones():
     drones = {}
@@ -174,20 +310,8 @@ def initialize_drones():
 
 def main():
     drones = initialize_drones()
-    package = create_test_package()
+    packages = create_test_packages()
     
-    drone = drones[1]
-    
-    print("Mission time: {} seconds".format(calculate_mission_time(drone, package)))
-    print("Required battery: {} %".format(calculate_required_battery(drone, package)))
-    print("Available battery: {} %".format(drone.battery))
-    print("Feasible: {}".format(is_mission_feasible(drone, package)))
-    
-    if not is_mission_feasible(drone, package):
-        print("Mission is not feasible.")
-        return
-        
-    assign_test_drone(drone, package)
     env = Drone2DEnvironment(num_drones=1)
     cv2.namedWindow("Drone 2D Environment", cv2.WINDOW_NORMAL)
     
@@ -200,37 +324,51 @@ def main():
         drone = drones[1]
         
         print(
-            "BEFORE: sim_time={:.1f}s status={:10s} pos=({:.1f}, {:.1f}) battery={:.2f}%".format(
-                sim_time, drone.status, drone.x, drone.y, drone.battery
-            )
+            f"BEFORE: "
+            f"time={sim_time:.1f}s "
+            f"status={drone.status} "
+            f"battery={drone.battery:.2f}/"
+            f"{drone.battery_capacity:.2f} "
+            f"cycles={drone.cycle_count} "
+            f"package={drone.current_package}"
         )
         
-        run_simulation_step(drones, package, dt_sim)
+        for pkg in packages.values():
+            remaining = pkg.deadline - sim_time
+            print(
+                f"Package {pkg.id}: "
+                f"deadline={pkg.deadline:.1f}s "
+                f"remaining={remaining:.1f}s "
+                f"delivered={pkg.delivered}"
+            )
+        
+        run_simulation_step(drone, packages, dt_sim, sim_time)
         
         sim_time += dt_sim
         
         print(
-            "AFTER:  sim_time={:.1f}s status={:10s} pos=({:.1f}, {:.1f}) battery={:.2f}%".format(
-                sim_time, drone.status, drone.x, drone.y, drone.battery
-            )
+            f"AFTER : time={sim_time:.1f}s "
+            f"status={drone.status} "
+            f"battery={drone.battery:.2f}% "
+            f"current_package={drone.current_package}"
         )
         
         env.update_state(
             drones=drones,
-            packages={package.id: package},
-            message="D1 status: {}".format(drone.status)
+            packages=packages,
+            message=f"D1: {drone.status}"
         )
         
         frame = env.draw()
         cv2.imshow("Drone 2D Environment", frame)
         key = cv2.waitKey(int(dt_real * 1000)) & 0xFF
         
-        if package.delivered and drone.status == "IDLE":
-            print("\nMISSION SUCCESS")
+        if all(package.delivered or package.assigned_drone == -1 for package in packages.values()):
+            print("\nALL FEASIBLE PACKAGES DELIVERED (OR REJECTED)")
             break
             
         if drone.status == "FAILED":
-            print("\nMISSION FAILED: battery exhausted")
+            print("\nDRONE FAILED")
             break
             
         if key in (ord('q'), ord('Q'), 27):

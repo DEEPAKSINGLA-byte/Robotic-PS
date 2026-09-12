@@ -46,6 +46,11 @@ class DroneState:
     status: str = "IDLE"
     payload: float = 0.0
     target: Optional[Tuple[float, float]] = None
+    current_package: int | None = None
+    total_distance: float = 0.0
+    battery_capacity: float = 100.0
+    cycle_count: int = 0
+    cycle_energy: float = 0.0
 
 
 @dataclass
@@ -54,7 +59,8 @@ class PackageState:
     x: float
     y: float
     weight: float = 0.0
-    deadline_remaining: float = 0.0
+    request_time: float = 0.0
+    deadline: float = 0.0
     assigned_drone: Optional[int] = None
     delivered: bool = False
 
