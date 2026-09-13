@@ -218,7 +218,7 @@ def get_feasible_drones(drones, package, sim_time):
     feasible = []
 
     for drone in drones.values():
-        if drone.status != "IDLE":
+        if drone.status not in ("IDLE", "WAITING_FOR_CHARGE", "CHARGING"):
             continue
 
         if is_mission_feasible(drone, package, sim_time):
@@ -609,27 +609,16 @@ def assign_packages_v1(drones, packages, sim_time, charging_pads):
                 best_drone = drones[f["drone_id"]]
                 best_details = score_details
                 
-        assign_package(best_drone, package)
-        
-        # Log WHY
-        print(f"\nPackage {package.id} -> Drone {best_drone.id}")
-        print(f"  D{best_drone.id} score = {best_details['score']:.2f}")
-        print(f"      deadline = {best_details['deadline']:.2f}")
-        print(f"      energy   = {best_details['energy']:.2f}")
-        print(f"      distance = {best_details['distance']:.2f}")
-        print(f"      balance  = {best_details['balance']:.2f}")
-        print(f"      charging = {best_details['charging']:.2f}")
-        print("  Alternatives:")
-        for drone in drones.values():
-            if drone.id in all_scores:
-                mark = "  <- selected" if drone.id == best_drone.id else ""
-                print(f"      D{drone.id} = {all_scores[drone.id]['score']:.2f}{mark}")
-            else:
-                print(f"      D{drone.id} = infeasible")
+        if best_drone is not None:
+            assign_package(best_drone, package)
+            if best_drone.charging_pad is not None:
+                charging_pads[best_drone.charging_pad] = None
+                best_drone.charging_pad = None
 
-def predict_target_battery(drone, packages, sim_time):
+def predict_mission_needs(drone, packages, sim_time):
     best_package = None
     best_cost = float('inf')
+    best_slack = float('inf')
     
     # Simple prediction cost: distance + deadline
     for package in packages.values():
@@ -647,55 +636,105 @@ def predict_target_battery(drone, packages, sim_time):
         deadline_cost = 1.0 - slack_fraction
         
         dist = calculate_mission_distance(drone, package)
-        cost = deadline_cost + (dist / 10000.0) # arbitrary weighting for prediction
+        cost = deadline_cost + (dist / 10000.0)
         
         if cost < best_cost:
             best_cost = cost
             best_package = package
+            best_slack = slack
             
-    safety_margin = 0.10 * drone.battery_capacity
-    
     if best_package is None:
-        return 0.50 * drone.battery_capacity
+        return 0.0, float('inf')
         
     req_energy = calculate_required_battery(drone, best_package)
-    return min(drone.battery_capacity, max(drone.battery, req_energy + safety_margin))
+    return req_energy, best_slack
 
 def manage_charging_infrastructure(drones, packages, charging_pads, sim_time):
-    waiting_drones = []
+    essential_queue = []
+    opportunistic_queue = []
     
+    # 1. Categorize Demand
     for drone in drones.values():
-        if drone.status in ("IDLE", "WAITING_FOR_CHARGE", "CHARGING"):
-            drone.target_battery = predict_target_battery(drone, packages, sim_time)
+        if drone.status not in ("IDLE", "WAITING_FOR_CHARGE", "CHARGING"):
+            continue
             
-        if drone.status == "CHARGING":
-            if drone.battery >= drone.target_battery:
-                # Stop charging early!
-                pad_id = drone.charging_pad
-                if pad_id is not None:
-                    charging_pads[pad_id] = None
-                drone.charging_pad = None
-                drone.status = "IDLE"
-                
-        elif drone.status == "WAITING_FOR_CHARGE":
-            if drone.battery >= drone.target_battery:
-                drone.status = "IDLE"
+        req_energy, predicted_slack = predict_mission_needs(drone, packages, sim_time)
+        safety_margin = 0.10 * drone.battery_capacity
+        essential_target = req_energy + safety_margin
+        
+        drone.target_battery = 100.0 # Default opportunistic target
+        
+        if drone.battery < essential_target:
+            # Does it need charging for an urgent mission?
+            if predicted_slack <= 60.0:
+                drone.target_battery = essential_target
+                essential_queue.append((drone, predicted_slack))
             else:
-                waiting_drones.append(drone)
-                
-    # Sort waiting drones by predicted target_battery urgency (who needs least charge to start a mission? Or deadline?)
-    # A simple priority is to sort by how much charge they actually need
-    waiting_drones.sort(key=lambda d: d.target_battery - d.battery)
+                opportunistic_queue.append((drone, predicted_slack))
+        elif drone.battery < drone.battery_capacity:
+            opportunistic_queue.append((drone, predicted_slack))
+            
+    # Sort queues by urgency (smallest slack first)
+    essential_queue.sort(key=lambda x: x[1])
+    opportunistic_queue.sort(key=lambda x: x[1])
     
-    # Assign free pads
-    for drone in waiting_drones:
-        pad_id = get_free_charging_pad(charging_pads)
-        if pad_id is not None:
-            charging_pads[pad_id] = drone.id
-            drone.charging_pad = pad_id
-            drone.status = "CHARGING"
-        else:
+    # Combine queues for allocation priority
+    priority_list = [d for d, s in essential_queue] + [d for d, s in opportunistic_queue]
+    
+    # 2. Re-evaluate Pad Priorities (Preempt opportunistic if essential needs pad)
+    # We figure out which drones *should* get pads
+    assigned_pads = {}
+    remaining_pads = list(charging_pads.keys())
+    
+    # Keep currently charging drones on their pads if they are high enough priority
+    # This prevents physically swapping pads unnecessarily
+    allocated_drones = set()
+    
+    for drone in priority_list:
+        if not remaining_pads:
             break
+            
+        # If it was already charging, try to keep it on the same pad
+        if drone.status == "CHARGING" and drone.charging_pad in remaining_pads:
+            pad = drone.charging_pad
+            remaining_pads.remove(pad)
+        else:
+            pad = remaining_pads.pop(0)
+            
+        assigned_pads[pad] = drone.id
+        allocated_drones.add(drone.id)
+        
+    # 3. Apply state changes
+    for pad_id in charging_pads.keys():
+        new_drone_id = assigned_pads.get(pad_id)
+        old_drone_id = charging_pads[pad_id]
+        
+        if old_drone_id != new_drone_id:
+            # Kick old drone off
+            if old_drone_id is not None:
+                old_drone = drones[old_drone_id]
+                old_drone.charging_pad = None
+                # If it's essential, it goes to WAITING, else IDLE
+                is_essential = any(d.id == old_drone_id for d, _ in essential_queue)
+                old_drone.status = "WAITING_FOR_CHARGE" if is_essential else "IDLE"
+                
+            # Put new drone on
+            if new_drone_id is not None:
+                new_drone = drones[new_drone_id]
+                new_drone.charging_pad = pad_id
+                new_drone.status = "CHARGING"
+                
+        charging_pads[pad_id] = new_drone_id
+        
+    # Any drone not allocated a pad but in essential queue goes to WAITING_FOR_CHARGE
+    for drone, slack in essential_queue:
+        if drone.id not in allocated_drones:
+            drone.status = "WAITING_FOR_CHARGE"
+            
+    # Any drone not allocated a pad in opportunistic queue goes to IDLE
+    for drone, slack in opportunistic_queue:
+        if drone.id not in allocated_drones:
+            drone.status = "IDLE"
 
 def assign_packages_v2(drones, packages, sim_time, charging_pads):
     # Stages 1-3: Actively manage charging queue based on predictive partial charging
@@ -733,23 +772,11 @@ def assign_packages_v2(drones, packages, sim_time, charging_pads):
                 best_drone = drones[f["drone_id"]]
                 best_details = score_details
                 
-        assign_package(best_drone, package)
-        
-        # Log WHY
-        print(f"\nPackage {package.id} -> Drone {best_drone.id}")
-        print(f"  D{best_drone.id} score = {best_details['score']:.2f}")
-        print(f"      deadline = {best_details['deadline']:.2f}")
-        print(f"      energy   = {best_details['energy']:.2f}")
-        print(f"      distance = {best_details['distance']:.2f}")
-        print(f"      balance  = {best_details['balance']:.2f}")
-        print(f"      charging = {best_details['charging']:.2f}")
-        print("  Alternatives:")
-        for drone in drones.values():
-            if drone.id in all_scores:
-                mark = "  <- selected" if drone.id == best_drone.id else ""
-                print(f"      D{drone.id} = {all_scores[drone.id]['score']:.2f}{mark}")
-            else:
-                print(f"      D{drone.id} = infeasible")
+        if best_drone is not None:
+            assign_package(best_drone, package)
+            if best_drone.charging_pad is not None:
+                charging_pads[best_drone.charging_pad] = None
+                best_drone.charging_pad = None
 
 def validate_fleet(drones, charging_pads, packages):
     validate_simulation(drones, charging_pads)
@@ -801,15 +828,7 @@ def main():
     while True:
         dt_sim = dt_real * TIME_SCALE
         
-        print("PADS:", charging_pads)
         for drone in drones.values():
-            print(
-                f"D{drone.id}: "
-                f"status={drone.status} "
-                f"battery={drone.battery:.2f}/"
-                f"{drone.battery_capacity:.2f} "
-                f"pad={drone.charging_pad}"
-            )
             run_simulation_step(drone, packages, dt_sim, sim_time, charging_pads)
         
         validate_simulation(drones, charging_pads)
