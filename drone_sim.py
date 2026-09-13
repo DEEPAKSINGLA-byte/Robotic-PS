@@ -55,6 +55,9 @@ class DroneState:
     charging_pad: Optional[int] = None
     charge_start_time: Optional[float] = None
     charge_remaining: float = 0.0
+    total_charge_wait_time: float = 0.0
+    wait_start_time: Optional[float] = None
+    target_battery: float = 100.0
 
 
 @dataclass

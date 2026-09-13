@@ -90,20 +90,20 @@ def start_charging(drone, charging_pads):
     charging_pads[pad_id] = drone.id
     drone.charging_pad = pad_id
     drone.status = "CHARGING"
-    drone.charge_remaining = calculate_charge_time(drone)
     return True
 
 def update_charging(drone, dt, charging_pads):
-    drone.charge_remaining -= dt
-    if drone.charge_remaining > 0:
-        return
-    drone.battery = drone.battery_capacity
-    pad_id = drone.charging_pad
-    if pad_id is not None:
-        charging_pads[pad_id] = None
-    drone.charging_pad = None
-    drone.charge_remaining = 0.0
-    drone.status = "IDLE"
+    charge_rate = drone.battery_capacity / FULL_CHARGE_TIME
+    charged_amount = charge_rate * dt
+    drone.battery += charged_amount
+    
+    if drone.battery >= drone.target_battery:
+        drone.battery = drone.target_battery
+        pad_id = drone.charging_pad
+        if pad_id is not None:
+            charging_pads[pad_id] = None
+        drone.charging_pad = None
+        drone.status = "IDLE"
 
 def consume_battery(drone, dt):
     battery_used = calculate_battery_consumption(
@@ -125,7 +125,6 @@ def should_create_package(sim_time):
     return sim_time > 0 and (sim_time % 20.0) < 0.001
 
 def generate_package(package_id, sim_time):
-    # Basic deterministic pattern
     dx = [100, -100, 200, -200, 300, -300, 150, -150, 250, -250]
     dy = [100, 150, -100, -150, 200, 250, -200, -250, 50, -50]
     idx = package_id % 10
@@ -133,6 +132,35 @@ def generate_package(package_id, sim_time):
     y = BASE[1] + dy[idx]
     weight = 1.0 + (package_id % 3) * 0.5
     deadline = sim_time + 100.0
+    
+    return PackageState(
+        id=package_id,
+        x=float(x),
+        y=float(y),
+        weight=weight,
+        request_time=sim_time,
+        deadline=deadline,
+        assigned_drone=None,
+        delivered=False
+    )
+
+def should_create_hard_package(sim_time):
+    # Harder workload: faster arrivals (every 10s)
+    return sim_time > 0 and (sim_time % 10.0) < 0.001
+
+def generate_hard_package(package_id, sim_time):
+    # More dispersed drop points, heavy weights, shorter deadlines
+    dx = [300, -400, 500, -200, 600, -500, 250, -350, 450, -600]
+    dy = [400, 300, -500, -200, 200, 600, -300, -400, 150, -50]
+    idx = package_id % 10
+    x = BASE[0] + dx[idx]
+    y = BASE[1] + dy[idx]
+    # Heavy and light
+    weight = 0.5 if (package_id % 2 == 0) else 2.5 
+    # Short deadline (between 60s to 120s depending on distance)
+    # The absolute distance is up to 850px (~85 meters). Round trip ~170m.
+    # At 8.4m/s, flight takes ~20 seconds.
+    deadline = sim_time + 60.0
     
     return PackageState(
         id=package_id,
@@ -277,9 +305,8 @@ def update_drone(drone, packages, dt, charging_pads):
                 drone.target = None
                 drone.payload = 0.0
 
-                if drone.battery < drone.battery_capacity:
-                    if not start_charging(drone, charging_pads):
-                        drone.status = "WAITING_FOR_CHARGE"
+                if drone.battery < 0.20 * drone.battery_capacity:
+                    drone.status = "WAITING_FOR_CHARGE"
                 else:
                     drone.status = "IDLE"
 
@@ -292,6 +319,7 @@ def update_drone(drone, packages, dt, charging_pads):
             return
 
         elif drone.status == "WAITING_FOR_CHARGE":
+            drone.total_charge_wait_time += remaining_dt
             if start_charging(drone, charging_pads):
                 return
             return
@@ -318,6 +346,63 @@ def calculate_mission_distance(drone, package):
     to_package = math.sqrt((package.x - drone.x)**2 + (package.y - drone.y)**2)
     to_base = math.sqrt((BASE[0] - package.x)**2 + (BASE[1] - package.y)**2)
     return pixels_to_meters(to_package) + pixels_to_meters(to_base)
+
+def estimate_expected_wait_time(drones, packages, charging_pads, sim_time, candidate_drone_id, candidate_eta, candidate_battery_after):
+    # 1. Initialize pad free times
+    pad_free_times = []
+    for occupant_id in charging_pads.values():
+        if occupant_id is not None:
+            occupant = drones[occupant_id]
+            pad_free_times.append(sim_time + occupant.charge_remaining)
+        else:
+            pad_free_times.append(sim_time)
+            
+    # 2. Compile future queue
+    future_events = []
+    for drone in drones.values():
+        if drone.id == candidate_drone_id:
+            continue
+            
+        if drone.status == "WAITING_FOR_CHARGE":
+            eta = sim_time
+            charge_time = calculate_charge_time(drone)
+            future_events.append((eta, charge_time))
+            
+        elif drone.status in ("DELIVERY", "RETURNING"):
+            if drone.status == "DELIVERY":
+                package = packages[drone.current_package]
+                dist_to_pkg = math.sqrt((package.x - drone.x)**2 + (package.y - drone.y)**2)
+                dist_to_base = math.sqrt((BASE[0] - package.x)**2 + (BASE[1] - package.y)**2)
+                dist = dist_to_pkg + dist_to_base
+            else:
+                dist = math.sqrt((BASE[0] - drone.x)**2 + (BASE[1] - drone.y)**2)
+                
+            speed = calculate_speed(drone.payload)
+            flight_time = pixels_to_meters(dist) / speed
+            eta = sim_time + flight_time
+            
+            battery_used = calculate_battery_consumption(flight_time, drone.payload)
+            bat_after = drone.battery - battery_used
+            
+            if bat_after < 0.20 * drone.battery_capacity:
+                missing_frac = (drone.battery_capacity - bat_after) / max(drone.battery_capacity, 1e-6)
+                charge_time = FULL_CHARGE_TIME * missing_frac
+                future_events.append((eta, charge_time))
+                
+    # 3. Simulate queue
+    future_events.sort(key=lambda x: x[0])
+    for eta, charge_time in future_events:
+        pad_free_times.sort()
+        start_charge = max(eta, pad_free_times[0])
+        pad_free_times[0] = start_charge + charge_time
+        
+    # 4. Evaluate candidate
+    if candidate_battery_after < 0.20 * drones[candidate_drone_id].battery_capacity:
+        pad_free_times.sort()
+        start_charge = max(candidate_eta, pad_free_times[0])
+        return start_charge - candidate_eta
+    
+    return 0.0
 
 def calculate_assignment_features(drones, drone_id, package, sim_time):
     drone = drones[drone_id]
@@ -353,6 +438,65 @@ def calculate_assignment_features(drones, drone_id, package, sim_time):
         "raw_utilization": drone.total_flight_time,
         "charging_risk": charging_risk,
         "slack": slack
+    }
+
+def calculate_assignment_features_v2(drones, packages, charging_pads, drone_id, package, sim_time):
+    drone = drones[drone_id]
+    
+    # 1. Deadline slack fraction
+    mission_time = calculate_mission_time(drone, package)
+    remaining_deadline = package.deadline - sim_time
+    slack = remaining_deadline - mission_time
+    slack_fraction = slack / max(remaining_deadline, 1e-6)
+    deadline_cost = 1.0 - slack_fraction
+    
+    # 2. Energy fraction
+    required_energy = calculate_required_battery(drone, package)
+    energy_cost = required_energy / max(drone.battery, 1e-6)
+    
+    # 3. Distance
+    distance = calculate_mission_distance(drone, package)
+    
+    # 4. Expected Charging Wait
+    battery_after = drone.battery - required_energy
+    eta = sim_time + mission_time
+    expected_wait = estimate_expected_wait_time(
+        drones, packages, charging_pads, sim_time, drone_id, eta, battery_after
+    )
+    
+    return {
+        "drone_id": drone.id,
+        "deadline_cost": deadline_cost,
+        "energy_cost": energy_cost,
+        "raw_distance": distance,
+        "raw_utilization": drone.total_flight_time,
+        "expected_wait": expected_wait,
+        "slack": slack
+    }
+
+def calculate_assignment_score_v2(features, max_distance, avg_flight_time):
+    W_DEADLINE = 10.0
+    W_ENERGY = 3.0
+    W_DISTANCE = 1.0
+    W_BALANCE = 2.0
+    
+    normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
+    balance_cost = features["raw_utilization"] / max(avg_flight_time, 1e-6)
+    
+    score = (
+        W_DEADLINE * features["deadline_cost"]
+        + W_ENERGY * features["energy_cost"]
+        + W_DISTANCE * normalized_distance
+        + W_BALANCE * balance_cost
+    )
+    
+    return {
+        "score": score,
+        "deadline": W_DEADLINE * features["deadline_cost"],
+        "energy": W_ENERGY * features["energy_cost"],
+        "distance": W_DISTANCE * normalized_distance,
+        "balance": W_BALANCE * balance_cost,
+        "charging": 0.0 # Handled structurally now
     }
 
 def calculate_assignment_score(features, max_distance, avg_flight_time):
@@ -413,7 +557,7 @@ def get_idle_drone(drones):
             return drone
     return None
 
-def assign_packages_baseline(drones, packages, sim_time):
+def assign_packages_baseline(drones, packages, sim_time, charging_pads):
     for package in packages.values():
         if package.delivered:
             continue
@@ -429,7 +573,7 @@ def assign_packages_baseline(drones, packages, sim_time):
         else:
             package.assigned_drone = -1
 
-def assign_packages_v1(drones, packages, sim_time):
+def assign_packages_v1(drones, packages, sim_time, charging_pads):
     for package in packages.values():
         if package.delivered:
             continue
@@ -459,6 +603,130 @@ def assign_packages_v1(drones, packages, sim_time):
         
         for f in features_list:
             score_details = calculate_assignment_score(f, max_distance, avg_flight_time)
+            all_scores[f["drone_id"]] = score_details
+            if score_details["score"] < best_score:
+                best_score = score_details["score"]
+                best_drone = drones[f["drone_id"]]
+                best_details = score_details
+                
+        assign_package(best_drone, package)
+        
+        # Log WHY
+        print(f"\nPackage {package.id} -> Drone {best_drone.id}")
+        print(f"  D{best_drone.id} score = {best_details['score']:.2f}")
+        print(f"      deadline = {best_details['deadline']:.2f}")
+        print(f"      energy   = {best_details['energy']:.2f}")
+        print(f"      distance = {best_details['distance']:.2f}")
+        print(f"      balance  = {best_details['balance']:.2f}")
+        print(f"      charging = {best_details['charging']:.2f}")
+        print("  Alternatives:")
+        for drone in drones.values():
+            if drone.id in all_scores:
+                mark = "  <- selected" if drone.id == best_drone.id else ""
+                print(f"      D{drone.id} = {all_scores[drone.id]['score']:.2f}{mark}")
+            else:
+                print(f"      D{drone.id} = infeasible")
+
+def predict_target_battery(drone, packages, sim_time):
+    best_package = None
+    best_cost = float('inf')
+    
+    # Simple prediction cost: distance + deadline
+    for package in packages.values():
+        if package.delivered or package.assigned_drone is not None:
+            continue
+        
+        # Must be feasible
+        if not is_mission_feasible(drone, package, sim_time):
+            continue
+            
+        mission_time = calculate_mission_time(drone, package)
+        remaining_deadline = package.deadline - sim_time
+        slack = remaining_deadline - mission_time
+        slack_fraction = slack / max(remaining_deadline, 1e-6)
+        deadline_cost = 1.0 - slack_fraction
+        
+        dist = calculate_mission_distance(drone, package)
+        cost = deadline_cost + (dist / 10000.0) # arbitrary weighting for prediction
+        
+        if cost < best_cost:
+            best_cost = cost
+            best_package = package
+            
+    safety_margin = 0.10 * drone.battery_capacity
+    
+    if best_package is None:
+        return 0.50 * drone.battery_capacity
+        
+    req_energy = calculate_required_battery(drone, best_package)
+    return min(drone.battery_capacity, max(drone.battery, req_energy + safety_margin))
+
+def manage_charging_infrastructure(drones, packages, charging_pads, sim_time):
+    waiting_drones = []
+    
+    for drone in drones.values():
+        if drone.status in ("IDLE", "WAITING_FOR_CHARGE", "CHARGING"):
+            drone.target_battery = predict_target_battery(drone, packages, sim_time)
+            
+        if drone.status == "CHARGING":
+            if drone.battery >= drone.target_battery:
+                # Stop charging early!
+                pad_id = drone.charging_pad
+                if pad_id is not None:
+                    charging_pads[pad_id] = None
+                drone.charging_pad = None
+                drone.status = "IDLE"
+                
+        elif drone.status == "WAITING_FOR_CHARGE":
+            if drone.battery >= drone.target_battery:
+                drone.status = "IDLE"
+            else:
+                waiting_drones.append(drone)
+                
+    # Sort waiting drones by predicted target_battery urgency (who needs least charge to start a mission? Or deadline?)
+    # A simple priority is to sort by how much charge they actually need
+    waiting_drones.sort(key=lambda d: d.target_battery - d.battery)
+    
+    # Assign free pads
+    for drone in waiting_drones:
+        pad_id = get_free_charging_pad(charging_pads)
+        if pad_id is not None:
+            charging_pads[pad_id] = drone.id
+            drone.charging_pad = pad_id
+            drone.status = "CHARGING"
+        else:
+            break
+
+def assign_packages_v2(drones, packages, sim_time, charging_pads):
+    # Stages 1-3: Actively manage charging queue based on predictive partial charging
+    manage_charging_infrastructure(drones, packages, charging_pads, sim_time)
+
+    # Stage 4: Assignment
+    for package in packages.values():
+        if package.delivered:
+            continue
+        if package.assigned_drone is not None:
+            continue
+
+        feasible_drones = get_feasible_drones(drones, package, sim_time)
+        
+        if not feasible_drones:
+            continue
+            
+        features_list = []
+        for drone in feasible_drones:
+            features_list.append(calculate_assignment_features(drones, drone.id, package, sim_time))
+            
+        max_distance = max((f["raw_distance"] for f in features_list), default=1e-6)
+        avg_flight_time = sum(d.total_flight_time for d in drones.values()) / len(drones)
+        
+        best_drone = None
+        best_score = float('inf')
+        best_details = None
+        all_scores = {}
+        
+        for f in features_list:
+            score_details = calculate_assignment_score_v2(f, max_distance, avg_flight_time)
             all_scores[f["drone_id"]] = score_details
             if score_details["score"] < best_score:
                 best_score = score_details["score"]
