@@ -70,6 +70,14 @@ class PackageState:
     deadline: float = 0.0
     assigned_drone: Optional[int] = None
     delivered: bool = False
+    status: str = "PENDING"
+    delivered_at: Optional[float] = None
+    outcome_reason: Optional[str] = None
+    decision_history: list = None
+
+    def __post_init__(self):
+        if self.decision_history is None:
+            self.decision_history = []
 
 
 class Drone2DEnvironment:
@@ -277,6 +285,13 @@ class Drone2DEnvironment:
             )
             y += 18
 
+        y += 24
+        for status in ("PENDING", "ASSIGNED", "REJECTED", "EXPIRED", "DELIVERED_ON_TIME", "DELIVERED_LATE"):
+            count = sum(p.status == status for p in self.packages.values())
+            cv2.putText(frame, f"{status}: {count}", (x, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, (70, 70, 70), 1)
+            y += 20
+
         y = HEIGHT - 62
         cv2.putText(
             frame,
@@ -286,7 +301,7 @@ class Drone2DEnvironment:
         )
         cv2.putText(
             frame,
-            "No autonomous movement",
+            "Clock and outcomes supplied by simulator",
             (x, y + 18),
             cv2.FONT_HERSHEY_SIMPLEX, 0.38, (70, 70, 70), 1
         )

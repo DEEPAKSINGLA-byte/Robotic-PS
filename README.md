@@ -41,16 +41,39 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python3 drone_sim.py
+python3 simulation.py
 ```
+
+This runs 40 simulated minutes with 24x playback (about 100 real seconds,
+subject to machine performance). Use `--time-scale 20` for approximately
+two real minutes, or `--headless` to run as fast as the computer allows.
+For example: `python3 simulation.py --headless --minutes 40 --algorithm v1`.
+Algorithms: `baseline`, `v1`, `v2` (default).
+
+All movement, battery use, charging, deadlines, and request arrivals use
+simulated seconds. Playback changes only how quickly those seconds pass.
+The physical model retains 25-minute full-load endurance and 40-minute
+empty-to-full charging. The demo uses the existing short-distance stress
+workload with 60-second deadlines, not the statement's 10–45 minute workload.
+`drone_sim.py` alone remains a passive renderer.
+
+Each run writes a unique JSON report under `logs/` (`--log-dir` overrides it).
+Reports contain outcomes, actual arrival times, assignment/defer decisions,
+candidate rejection reasons, and weighted score components for V1/V2.
+The baseline records its first-feasible-idle selection rule rather than a
+weighted score. All idle drones are considered before it defers a request.
+The hard and random workload scripts also save reports and print separate
+on-time, late, rejected, expired, pending, and in-flight counts.
+
+Pending requests are rejected for invalid/overweight input or when even an
+immediate fully charged departure from the base cannot complete them safely
+and on time. Temporary battery shortages or busy drones cause deferral.
+Unassigned requests whose deadline passes expire. Airborne deliveries retain
+their owner and become on-time or late on arrival; deadlines do not teleport
+or reassign their packages.
 
 ## Controls
 
-- `SPACE` — pause/resume
-- `N` — create a package immediately
-- `F` — inject a drone communication failure
-- `A` — toggle automatic package generation
-- `R` — reset
 - `Q` / `ESC` — quit
 
 ## Important design point
