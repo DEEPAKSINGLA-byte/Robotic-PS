@@ -348,94 +348,96 @@ def calculate_mission_distance(drone, package):
 
 
 
-def calculate_assignment_features(drones, drone_id, package, sim_time):
-    drone = drones[drone_id]
-    
-    # 1. Deadline slack fraction
-    delivery_time = calculate_delivery_time(drone, package)
-    remaining_deadline = package.deadline - sim_time
-    slack = remaining_deadline - delivery_time
-    slack_fraction = slack / max(remaining_deadline, 1e-6)
-    deadline_cost = 1.0 - slack_fraction
-    
-    # 2. Energy fraction
-    required_energy = calculate_required_battery(drone, package)
-    energy_cost = required_energy / max(drone.battery, 1e-6)
-    
-    # 3. Distance
-    distance = calculate_mission_distance(drone, package)
-    
-    # 4. Charging risk
-    remaining_fraction = (drone.battery - required_energy) / max(drone.battery_capacity, 1e-6)
-    if remaining_fraction > 0.30:
-        charging_risk = 0.0
-    elif remaining_fraction > 0.15:
-        charging_risk = 0.5
-    else:
-        charging_risk = 1.0
-    
-    return {
-        "drone_id": drone.id,
-        "deadline_cost": deadline_cost,
-        "energy_cost": energy_cost,
-        "raw_distance": distance,
-        "raw_utilization": drone.total_flight_time,
-        "charging_risk": charging_risk,
-        "slack": slack
-    }
+# def calculate_assignment_features(drones, drone_id, package, sim_time):
+#     drone = drones[drone_id]
+#     
+#     # 1. Deadline slack fraction
+#     delivery_time = calculate_delivery_time(drone, package)
+#     remaining_deadline = package.deadline - sim_time
+#     slack = remaining_deadline - delivery_time
+#     slack_fraction = slack / max(remaining_deadline, 1e-6)
+#     deadline_cost = 1.0 - slack_fraction
+#     
+#     # 2. Energy fraction
+#     required_energy = calculate_required_battery(drone, package)
+#     energy_cost = required_energy / max(drone.battery, 1e-6)
+#     
+#     # 3. Distance
+#     distance = calculate_mission_distance(drone, package)
+#     
+#     # 4. Charging risk
+#     remaining_fraction = (drone.battery - required_energy) / max(drone.battery_capacity, 1e-6)
+#     if remaining_fraction > 0.30:
+#         charging_risk = 0.0
+#     elif remaining_fraction > 0.15:
+#         charging_risk = 0.5
+#     else:
+#         charging_risk = 1.0
+#     
+#     return {
+#         "drone_id": drone.id,
+#         "deadline_cost": deadline_cost,
+#         "energy_cost": energy_cost,
+#         "raw_distance": distance,
+#         "raw_utilization": drone.total_flight_time,
+#         "charging_risk": charging_risk,
+#         "slack": slack
+#     }
+# 
+# 
+# def calculate_assignment_score_v2(features, max_distance, avg_flight_time):
+#     W_DEADLINE = 10.0
+#     W_ENERGY = 3.0
+#     W_DISTANCE = 1.0
+#     W_BALANCE = 2.0
+#     
+#     normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
+#     balance_cost = features["raw_utilization"] / max(avg_flight_time, 1e-6)
+#     
+#     score = (
+#         W_DEADLINE * features["deadline_cost"]
+#         + W_ENERGY * features["energy_cost"]
+#         + W_DISTANCE * normalized_distance
+#         + W_BALANCE * balance_cost
+#     )
+#     
+#     return {
+#         "score": score,
+#         "deadline": W_DEADLINE * features["deadline_cost"],
+#         "energy": W_ENERGY * features["energy_cost"],
+#         "distance": W_DISTANCE * normalized_distance,
+#         "balance": W_BALANCE * balance_cost,
+#         "charging": 0.0 # Handled structurally now
+#     }
+# 
+# def calculate_assignment_score(features, max_distance, avg_flight_time):
+#     W_DEADLINE = 10.0
+#     W_ENERGY = 3.0
+#     W_DISTANCE = 1.0
+#     W_BALANCE = 2.0
+#     W_CHARGE = 4.0
+#     
+#     normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
+#     balance_cost = features["raw_utilization"] / max(avg_flight_time, 1e-6)
+#     
+#     score = (
+#         W_DEADLINE * features["deadline_cost"]
+#         + W_ENERGY * features["energy_cost"]
+#         + W_DISTANCE * normalized_distance
+#         + W_BALANCE * balance_cost
+#         + W_CHARGE * features["charging_risk"]
+#     )
+#     
+#     return {
+#         "score": score,
+#         "deadline": W_DEADLINE * features["deadline_cost"],
+#         "energy": W_ENERGY * features["energy_cost"],
+#         "distance": W_DISTANCE * normalized_distance,
+#         "balance": W_BALANCE * balance_cost,
+#         "charging": W_CHARGE * features["charging_risk"]
+#     }
 
 
-def calculate_assignment_score_v2(features, max_distance, avg_flight_time):
-    W_DEADLINE = 10.0
-    W_ENERGY = 3.0
-    W_DISTANCE = 1.0
-    W_BALANCE = 2.0
-    
-    normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
-    balance_cost = features["raw_utilization"] / max(avg_flight_time, 1e-6)
-    
-    score = (
-        W_DEADLINE * features["deadline_cost"]
-        + W_ENERGY * features["energy_cost"]
-        + W_DISTANCE * normalized_distance
-        + W_BALANCE * balance_cost
-    )
-    
-    return {
-        "score": score,
-        "deadline": W_DEADLINE * features["deadline_cost"],
-        "energy": W_ENERGY * features["energy_cost"],
-        "distance": W_DISTANCE * normalized_distance,
-        "balance": W_BALANCE * balance_cost,
-        "charging": 0.0 # Handled structurally now
-    }
-
-def calculate_assignment_score(features, max_distance, avg_flight_time):
-    W_DEADLINE = 10.0
-    W_ENERGY = 3.0
-    W_DISTANCE = 1.0
-    W_BALANCE = 2.0
-    W_CHARGE = 4.0
-    
-    normalized_distance = features["raw_distance"] / max(max_distance, 1e-6)
-    balance_cost = features["raw_utilization"] / max(avg_flight_time, 1e-6)
-    
-    score = (
-        W_DEADLINE * features["deadline_cost"]
-        + W_ENERGY * features["energy_cost"]
-        + W_DISTANCE * normalized_distance
-        + W_BALANCE * balance_cost
-        + W_CHARGE * features["charging_risk"]
-    )
-    
-    return {
-        "score": score,
-        "deadline": W_DEADLINE * features["deadline_cost"],
-        "energy": W_ENERGY * features["energy_cost"],
-        "distance": W_DISTANCE * normalized_distance,
-        "balance": W_BALANCE * balance_cost,
-        "charging": W_CHARGE * features["charging_risk"]
-    }
 
 
 def validate_simulation(drones, charging_pads):
@@ -561,20 +563,23 @@ def schedule_packages(drones, packages, sim_time, charging_pads, algorithm, time
                 selected = feasible[0]  # First feasible idle drone, not first idle drone.
                 reason = "First feasible idle drone in fleet order"
             else:
-                features = {
-                    c["drone_id"]: calculate_assignment_features(drones, c["drone_id"], package, sim_time)
-                    for c in feasible
-                }
-                max_distance = max(f["raw_distance"] for f in features.values())
-                avg_time = sum(d.total_flight_time for d in drones.values()) / len(drones)
-                score_fn = calculate_assignment_score if algorithm == "v1" else calculate_assignment_score_v2
-                for candidate in feasible:
-                    candidate["features"] = features[candidate["drone_id"]]
-                    candidate["score_components"] = score_fn(
-                        features[candidate["drone_id"]], max_distance, avg_time)
-                selected = min(feasible, key=lambda c: c["score_components"]["score"])
-                reason = ("Fleet preparation ready; coordinated coverage and stable pairing"
-                          if algorithm == "v2" else "Lowest weighted score; fleet order breaks ties")
+                # features = {
+                #     c["drone_id"]: calculate_assignment_features(drones, c["drone_id"], package, sim_time)
+                #     for c in feasible
+                # }
+                # max_distance = max(f["raw_distance"] for f in features.values())
+                # avg_time = sum(d.total_flight_time for d in drones.values()) / len(drones)
+                # score_fn = calculate_assignment_score if algorithm == "v1" else calculate_assignment_score_v2
+                # for candidate in feasible:
+                #     candidate["features"] = features[candidate["drone_id"]]
+                #     candidate["score_components"] = score_fn(
+                #         features[candidate["drone_id"]], max_distance, avg_time)
+                # selected = min(feasible, key=lambda c: c["score_components"]["score"])
+                # reason = ("Fleet preparation ready; coordinated coverage and stable pairing"
+                #           if algorithm == "v2" else "Lowest weighted score; fleet order breaks ties")
+                
+                selected = None
+                reason = "Cost function disabled"
         else:
             reason = "No drone available with sufficient time and return energy; retry later"
         package.decision_history.append({
