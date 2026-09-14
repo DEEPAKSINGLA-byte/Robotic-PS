@@ -2,7 +2,9 @@ import math
 import argparse
 import json
 import time
+import statistics
 from pathlib import Path
+from dataclasses import replace
 import cv2
 from drone_sim import DroneState, PackageState, BASE, Drone2DEnvironment
 
@@ -172,6 +174,23 @@ def calculate_required_battery(drone, package):
     return delivery_battery + return_battery
 
 
+SAFETY_RESERVE_FRACTION = 0.10
+MAX_LOW_BATTERY_WAIT = 600.0
+LOW_BATTERY_FRACTION = 0.20
+
+
+def mission_departure_energy(drone, package):
+    # Same real reserve for every policy; do not silently shrink it near capacity.
+    return calculate_required_battery(drone, package) + SAFETY_RESERVE_FRACTION * drone.battery_capacity
+
+
+def is_low_battery_waiting(drone, charging_pads):
+    return (drone.status != "FAILED" and drone.current_package is None and drone.payload == 0
+            and math.hypot(drone.x - BASE[0], drone.y - BASE[1]) <= 1e-6
+            and drone.battery < LOW_BATTERY_FRACTION * drone.battery_capacity
+            and drone.id not in charging_pads.values())
+
+
 def is_mission_feasible(drone, package, sim_time):
     if package.weight > 2.5:
         return False
@@ -179,7 +198,7 @@ def is_mission_feasible(drone, package, sim_time):
     delivery_time = calculate_delivery_time(drone, package)
     if delivery_time > remaining_deadline:
         return False
-    required_battery = calculate_required_battery(drone, package)
+    required_battery = mission_departure_energy(drone, package)
     if required_battery > drone.battery:
         return False
     return True
@@ -294,7 +313,7 @@ def update_drone(drone, packages, dt, charging_pads, sim_time=0.0):
 
         elif drone.status == "WAITING_FOR_CHARGE":
             drone.total_charge_wait_time += remaining_dt
-            if start_charging(drone, charging_pads):
+            if not drone.charging_managed and start_charging(drone, charging_pads):
                 return
             return
 
@@ -465,8 +484,9 @@ def update_package_outcomes(drones, packages, sim_time):
             ideal = DroneState(id=0, x=float(BASE[0]), y=float(BASE[1]))
             if sim_time + calculate_delivery_time(ideal, package) > package.deadline + 1e-9:
                 reason = "Even immediate departure cannot meet deadline"
-            elif calculate_required_battery(ideal, package) > max(d.battery_capacity for d in drones.values()):
-                reason = "Round trip exceeds every drone's full usable capacity"
+            elif not any(calculate_required_battery(ideal, package) + SAFETY_RESERVE_FRACTION * d.battery_capacity
+                         <= d.battery_capacity for d in drones.values()):
+                reason = "Round trip plus safety reserve exceeds every drone's usable capacity"
         if reason:
             if package.status != "EXPIRED":
                 package.status = "REJECTED"
@@ -486,23 +506,34 @@ def candidate_details(drone, package, sim_time, allowed):
         reasons.append("Payload exceeds capacity")
     arrival = sim_time + calculate_delivery_time(drone, package)
     energy = calculate_required_battery(drone, package)
+    departure_energy = mission_departure_energy(drone, package)
     if arrival > package.deadline + 1e-9:
         reasons.append("Arrival after deadline")
-    if energy > drone.battery:
-        reasons.append("Insufficient battery for delivery and return")
+    if departure_energy > drone.battery + 1e-9:
+        reasons.append("Insufficient battery for delivery, return and common safety reserve")
     return {
         "drone_id": drone.id, "status": drone.status, "battery": drone.battery,
         "capacity": drone.battery_capacity, "arrival": arrival,
         "required_energy": energy, "reasons": reasons,
+        "departure_energy": departure_energy,
+        "charging_basis": drone.charging_basis,
     }
 
 
-def schedule_packages(drones, packages, sim_time, charging_pads, algorithm):
+def schedule_packages(drones, packages, sim_time, charging_pads, algorithm, timestep=1.0):
     update_package_outcomes(drones, packages, sim_time)
+    for drone in drones.values():
+        drone.charging_managed = algorithm == "v2"
+        if is_low_battery_waiting(drone, charging_pads):
+            if drone.low_battery_wait_since is None:
+                drone.low_battery_wait_since = sim_time
+        else:
+            drone.low_battery_wait_since = None
     preparation = {}
     if algorithm == "v2":
-        preparation = manage_charging_infrastructure(drones, packages, charging_pads, sim_time)
+        preparation = manage_charging_infrastructure(drones, packages, charging_pads, sim_time, timestep)
     package_plans = {plan["package_id"]: plan for plan in preparation.values()}
+    ready_at_base = charging_candidates_at_base(drones)
     allowed = ("IDLE",) if algorithm == "baseline" else ("IDLE", "WAITING_FOR_CHARGE", "CHARGING")
     for package in packages.values():
         if package.status != "PENDING" or package.assigned_drone is not None or package.delivered:
@@ -513,6 +544,12 @@ def schedule_packages(drones, packages, sim_time, charging_pads, algorithm):
         plan = package_plans.get(package.id)
         if algorithm == "v2":
             for candidate in candidates:
+                if candidate["drone_id"] not in ready_at_base:
+                    candidate["reasons"].append("Drone not physically ready at pickup base")
+                drone = drones[candidate["drone_id"]]
+                if (drone.recovery_charging and drone.recovery_package is None
+                        and drone.battery < LOW_BATTERY_FRACTION * drone.battery_capacity):
+                    candidate["reasons"].append("Complete starvation-recovery charge before dispatch")
                 if plan is None or candidate["drone_id"] != plan["drone_id"]:
                     candidate["reasons"].append("Not paired with this package in fleet preparation")
                 elif drones[candidate["drone_id"]].battery + 1e-9 < plan["target_battery"]:
@@ -536,7 +573,7 @@ def schedule_packages(drones, packages, sim_time, charging_pads, algorithm):
                     candidate["score_components"] = score_fn(
                         features[candidate["drone_id"]], max_distance, avg_time)
                 selected = min(feasible, key=lambda c: c["score_components"]["score"])
-                reason = ("Fleet preparation ready; earliest feasible arrival in deadline order"
+                reason = ("Fleet preparation ready; coordinated coverage and stable pairing"
                           if algorithm == "v2" else "Lowest weighted score; fleet order breaks ties")
         else:
             reason = "No drone available with sufficient time and return energy; retry later"
@@ -553,6 +590,9 @@ def schedule_packages(drones, packages, sim_time, charging_pads, algorithm):
                 charging_pads[drone.charging_pad] = None
                 drone.charging_pad = None
             assign_package(drone, package)
+            drone.preparation_package = None
+            drone.recovery_charging = False
+            drone.recovery_package = None
 
 
 def summarize_packages(packages):
@@ -582,12 +622,12 @@ def save_run_report(packages, directory="logs", label="simulation"):
     return path
 
 
-def assign_packages_baseline(drones, packages, sim_time, charging_pads):
-    schedule_packages(drones, packages, sim_time, charging_pads, "baseline")
+def assign_packages_baseline(drones, packages, sim_time, charging_pads, timestep=1.0):
+    schedule_packages(drones, packages, sim_time, charging_pads, "baseline", timestep)
 
 
-def assign_packages_v1(drones, packages, sim_time, charging_pads):
-    schedule_packages(drones, packages, sim_time, charging_pads, "v1")
+def assign_packages_v1(drones, packages, sim_time, charging_pads, timestep=1.0):
+    schedule_packages(drones, packages, sim_time, charging_pads, "v1", timestep)
 
 def charging_candidates_at_base(drones):
     """Only empty, available drones physically at the pickup base can prepare."""
@@ -601,115 +641,434 @@ def charging_candidates_at_base(drones):
     }
 
 
-def plan_fleet_preparation(drones, packages, charging_pads, sim_time):
-    """Temporary one-job-per-drone matching with a shared charging calendar.
+PREPARATION_BEAM_WIDTH = 6
+PREPARATION_SWITCH_PENALTY = 5.0  # Simulated arrival seconds per changed pairing.
+PREPARATION_JOBS_PER_DRONE = 3
 
-    Process earlier deadlines first. Choose the earliest achievable arrival,
-    breaking ties by charging energy, accumulated flight time, then drone ID.
-    Existing opportunistic charging can be preempted immediately in this model.
-    Plans are recomputed each tick; they never assign physical package ownership.
-    """
-    available = charging_candidates_at_base(drones)
-    # A pad held by an unavailable drone cannot be promised to a preparation.
-    pad_ready = {
-        pad: (sim_time if owner is None or owner in available else float("inf"))
-        for pad, owner in charging_pads.items()
+
+def planning_tick(value, now, timestep):
+    return now + max(0, math.ceil((value - now) / timestep - 1e-9)) * timestep
+
+
+def predict_drone_availability(drone, packages, sim_time, timestep=1.0):
+    """Read-only forecast of an empty drone at base after its current mission."""
+    values = (drone.x, drone.y, drone.battery, drone.battery_capacity,
+              drone.payload, drone.cycle_energy)
+    if not all(math.isfinite(v) for v in values):
+        return None
+    if not (0 <= drone.battery <= drone.battery_capacity and drone.battery_capacity > 0
+            and 0 <= drone.payload <= 2.5 and 0 <= drone.cycle_energy < 100):
+        return None
+    predicted = replace(drone)
+    legs = []
+    if drone.status in ("IDLE", "CHARGING", "WAITING_FOR_CHARGE"):
+        if drone.id not in charging_candidates_at_base({drone.id: drone}):
+            return None
+        # Charging targets are preemptible; only energy already stored is available now.
+    elif drone.status == "DELIVERY":
+        package = packages.get(drone.current_package)
+        if (package is None or package.delivered or package.assigned_drone != drone.id
+                or drone.target is None
+                or not all(math.isfinite(v) for v in drone.target)
+                or math.hypot(drone.target[0] - package.x, drone.target[1] - package.y) > 1e-6):
+            return None
+        legs = [(math.hypot(drone.target[0]-drone.x, drone.target[1]-drone.y), drone.payload),
+                (math.hypot(BASE[0]-package.x, BASE[1]-package.y), 0.0)]
+    elif drone.status == "RETURNING":
+        if drone.target is None or tuple(drone.target) != tuple(BASE) or drone.payload != 0:
+            return None
+        legs = [(math.hypot(BASE[0]-drone.x, BASE[1]-drone.y), 0.0)]
+    else:
+        return None
+
+    elapsed = 0.0
+    for distance, payload in legs:
+        duration = pixels_to_meters(distance) / calculate_speed(payload)
+        predicted.payload = payload
+        old_capacity = predicted.battery_capacity
+        consume_battery(predicted, duration)
+        # Whole-leg forecasting can miss a capacity clamp at an earlier tick.
+        # Subtract the capacity loss as a conservative bound on that discrepancy.
+        predicted.battery = max(0.0, predicted.battery - (old_capacity - predicted.battery_capacity))
+        if predicted.battery <= 0:
+            return None
+        elapsed += duration
+    predicted.x, predicted.y = float(BASE[0]), float(BASE[1])
+    predicted.payload = 0.0
+    predicted.current_package = None
+    predicted.target = None
+    predicted.status = "IDLE"
+    predicted.charging_pad = None
+    return {
+        "state": predicted, "available_at": planning_tick(sim_time + elapsed, sim_time, timestep),
+        "physical_arrival": sim_time + elapsed, "source_status": drone.status,
     }
-    pending = sorted(
+
+
+def earliest_pad_slot(calendar, available_at, duration, now, timestep, preferred=None):
+    choices = []
+    for pad, intervals in calendar.items():
+        start = available_at
+        for busy_start, busy_end in sorted(intervals):
+            end = planning_tick(start + duration, now, timestep)
+            if end <= busy_start + 1e-9:
+                break
+            if start < busy_end:
+                start = busy_end
+        if math.isfinite(start):
+            end = planning_tick(start + duration, now, timestep)
+            choices.append((end, pad != preferred, pad, start))
+    if not choices:
+        return None
+    end, _, pad, start = min(choices)
+    return pad, start, end
+
+
+def valid_pending_packages(packages, sim_time):
+    return sorted(
         (p for p in packages.values()
          if p.status == "PENDING" and p.assigned_drone is None and not p.delivered
          and all(math.isfinite(v) for v in (p.x, p.y, p.weight, p.request_time, p.deadline))
          and 0 <= p.weight <= 2.5 and p.request_time <= sim_time <= p.deadline),
-        key=lambda p: (p.deadline, p.request_time, p.id),
-    )
-    plans = {}
+        key=lambda p: (p.deadline, p.request_time, p.id))
+
+
+def starvation_recovery_schedule(drones, charging_pads, sim_time, timestep, packages=None):
+    eligible = charging_candidates_at_base(drones)
+    overdue = sorted(
+        (d for d in eligible.values()
+         if (d.recovery_charging and d.recovery_package is not None)
+         or (d.battery < LOW_BATTERY_FRACTION*d.battery_capacity
+             and (d.recovery_charging or (d.low_battery_wait_since is not None
+                  and sim_time-d.low_battery_wait_since >= MAX_LOW_BATTERY_WAIT)))),
+        key=lambda d: (not d.recovery_charging,
+                       d.low_battery_wait_since if d.low_battery_wait_since is not None else sim_time,
+                       d.id))
+    free = [pad for pad, owner in charging_pads.items() if owner is None or owner in eligible]
+    pending = valid_pending_packages(packages or {}, sim_time)
+    recovery, claimed = {}, set()
+    for drone in overdue:
+        options = []
+        for package in pending:
+            if package.id in claimed:
+                continue
+            target = mission_departure_energy(drone, package)
+            if target > drone.battery_capacity:
+                continue
+            duration = max(0.0, target-drone.battery)/drone.battery_capacity*FULL_CHARGE_TIME
+            if duration > 1e-9 and not free:
+                continue
+            ready = planning_tick(sim_time+duration, sim_time, timestep)
+            arrival = ready+calculate_delivery_time(drone, package)
+            if arrival <= package.deadline+1e-9:
+                options.append(dict(package_id=package.id, target_battery=target,
+                                    charge_seconds=duration, charge_end=ready,
+                                    predicted_arrival=arrival, basis="delivery"))
+        if options:
+            selected = min(options, key=lambda c: (
+                c["package_id"] != drone.recovery_package,
+                c["predicted_arrival"], c["charge_seconds"], c["package_id"]))
+            claimed.add(selected["package_id"])
+        else:
+            target = LOW_BATTERY_FRACTION*drone.battery_capacity
+            if drone.battery >= target or not free:
+                continue
+            duration = (target-drone.battery)/drone.battery_capacity*FULL_CHARGE_TIME
+            selected = dict(package_id=None, target_battery=target, charge_seconds=duration,
+                            charge_end=planning_tick(sim_time+duration, sim_time, timestep),
+                            basis="fallback_20_percent")
+        pad = None
+        if selected["charge_seconds"] > 1e-9:
+            pad = drone.charging_pad if drone.charging_pad in free else free[0]
+            free.remove(pad)
+        recovery[drone.id] = dict(selected, pad_id=pad, charge_start=sim_time)
+    return recovery
+
+
+def forecast_after_planned_job(prediction, candidate, package, sim_time, timestep):
+    state = replace(prediction["state"])
+    state.battery = max(state.battery, candidate["target_battery"])
+    outbound = calculate_delivery_time(state, package)
+    returning = calculate_mission_time(state, package)-outbound
+    for duration, payload in ((outbound, package.weight), (returning, 0.0)):
+        state.payload = payload
+        old_capacity = state.battery_capacity
+        consume_battery(state, duration)
+        state.battery = max(0.0, state.battery-(old_capacity-state.battery_capacity))
+        state.total_flight_time += duration
+    if state.battery <= 0:
+        return None
+    physical_arrival = candidate["charge_end"]+outbound+returning
+    return dict(state=state, available_at=planning_tick(physical_arrival, sim_time, timestep),
+                physical_arrival=physical_arrival, source_status="PLANNED_RETURN")
+
+
+def job_candidate(drone_id, prediction, package, calendar, drones, sim_time, timestep, fixed=None):
+    drone = prediction["state"]
+    target = mission_departure_energy(drone, package)
+    if target > drone.battery_capacity:
+        return None
+    added = max(0.0, target-drone.battery)
+    duration = added/drone.battery_capacity*FULL_CHARGE_TIME
+    pad, start, ready = None, prediction["available_at"], prediction["available_at"]
+    if fixed is not None:
+        pad, start, ready = fixed["pad_id"], fixed["charge_start"], fixed["charge_end"]
+    elif duration > 1e-9:
+        slot = earliest_pad_slot(calendar, start, duration, sim_time, timestep, drones[drone_id].charging_pad)
+        if slot is None:
+            return None
+        pad, start, ready = slot
+    arrival = ready+calculate_delivery_time(drone, package)
+    if arrival > package.deadline+1e-9:
+        return None
+    return dict(drone_id=drone_id, package_id=package.id,
+                available_at=prediction["available_at"], physical_arrival=prediction["physical_arrival"],
+                source_status=prediction["source_status"], battery_at_availability=drone.battery,
+                capacity_at_availability=drone.battery_capacity,
+                required_energy=calculate_required_battery(drone, package), target_battery=target,
+                added_energy=added, charge_seconds=duration, mission_seconds=calculate_mission_time(drone, package),
+                pad_id=pad, charge_start=start, charge_end=ready, predicted_arrival=arrival,
+                slack=package.deadline-arrival)
+
+
+def select_diverse_beam(expanded, rank, best_skip, sim_time, width=PREPARATION_BEAM_WIDTH):
+    def exact(branch):
+        return tuple(sorted((d, tuple((p["package_id"], p["pad_id"], p["charge_start"], p["charge_end"])
+                                      for p in route)) for d, route in branch["routes"].items()))
+    def strategy(branch):
+        # Ignore symmetric drone/pad labels; preserve route orders and materially
+        # different charging requirements or start times (one-minute buckets).
+        return tuple(sorted((tuple(p["package_id"] for p in route),
+                             tuple((int(p["charge_seconds"]//60),
+                                    int((p["charge_start"]-sim_time)//60)) for p in route))
+                            for route in branch["routes"].values()))
+    unique = {}
+    for branch in sorted(expanded, key=rank):
+        unique.setdefault(exact(branch), branch)
+    ordered = list(unique.values())
+    selected = [ordered[0]]
+    if exact(best_skip) != exact(selected[0]) and width > 1:
+        selected.append(best_skip)
+    seen = {strategy(branch) for branch in selected}
+    best = rank(ordered[0])
+    for branch in ordered:
+        if len(selected) >= width:
+            break
+        score = rank(branch)
+        competitive = score[0] == best[0] and score[1] <= best[1]+max(10.0, .25*abs(best[1]))
+        if competitive and strategy(branch) not in seen:
+            selected.append(branch)
+            seen.add(strategy(branch))
+    chosen = {exact(branch) for branch in selected}
+    for branch in ordered:
+        if len(selected) >= width:
+            break
+        if exact(branch) not in chosen:
+            selected.append(branch)
+            chosen.add(exact(branch))
+    return selected
+
+
+def plan_fleet_preparation(drones, packages, charging_pads, sim_time, timestep=1.0):
+    if not math.isfinite(timestep) or timestep <= 0:
+        raise ValueError("Planning timestep must be finite and positive")
+    future = {d.id: prediction for d in drones.values()
+              if (prediction := predict_drone_availability(d, packages, sim_time, timestep)) is not None}
+    at_base = charging_candidates_at_base(drones)
+    base_calendar = {pad: ([] if owner is None or owner in at_base else [(sim_time, float("inf"))])
+                     for pad, owner in charging_pads.items()}
+    recovery = starvation_recovery_schedule(drones, charging_pads, sim_time, timestep, packages)
+    seed_routes, pinned_packages = {}, set()
+    for drone_id, session in recovery.items():
+        if session["package_id"] is not None:
+            package = packages[session["package_id"]]
+            job = job_candidate(drone_id, future[drone_id], package, base_calendar,
+                                drones, sim_time, timestep, fixed=session)
+            if job is None:
+                continue
+            job["recovery_delivery"] = True
+            seed_routes[drone_id] = [job]
+            pinned_packages.add(package.id)
+            future[drone_id] = forecast_after_planned_job(future[drone_id], job, package, sim_time, timestep)
+        else:
+            state = replace(future[drone_id]["state"], battery=session["target_battery"])
+            future[drone_id] = dict(state=state, available_at=session["charge_end"],
+                                   physical_arrival=sim_time, source_status="RECOVERY_CHARGE")
+        if session["pad_id"] is not None:
+            base_calendar[session["pad_id"]].append((session["charge_start"],session["charge_end"]))
+    future = {d:p for d,p in future.items() if p is not None}
+    pending = [p for p in valid_pending_packages(packages, sim_time) if p.id not in pinned_packages]
+    previous = {d.preparation_package:d.id for d in drones.values() if d.preparation_package is not None}
+
+    def rank(branch):
+        routes = branch["routes"]
+        jobs = [p for route in routes.values() for p in route]
+        resources = sum(p["charge_seconds"]/max(len(charging_pads),1)
+                        + p["mission_seconds"]/max(len(drones),1) for p in jobs)
+        switches = sum(PREPARATION_SWITCH_PENALTY for d,route in routes.items()
+                       if route[0]["package_id"] in previous and previous[route[0]["package_id"]] != d)
+        return (-len(jobs), resources+.05*(switches+sum(p["predicted_arrival"]-sim_time for p in jobs)),
+                sum(packages[p["package_id"]].deadline for p in jobs),
+                sum(drones[d].total_flight_time for d in routes),
+                tuple(sorted((d,tuple(p["package_id"] for p in route)) for d,route in routes.items())))
+
+    def replay(drone_id, order, routes):
+        calendar = {pad:list(intervals) for pad,intervals in base_calendar.items()}
+        for other, route in routes.items():
+            if other == drone_id:
+                continue
+            for job in route[len(seed_routes.get(other,[])):]:
+                if job["pad_id"] is not None:
+                    calendar[job["pad_id"]].append((job["charge_start"],job["charge_end"]))
+        rebuilt = list(seed_routes.get(drone_id,[]))
+        prediction = future[drone_id]
+        for package_id in order:
+            package = packages[package_id]
+            job = job_candidate(drone_id,prediction,package,calendar,drones,sim_time,timestep)
+            if job is None:
+                return None
+            prediction = forecast_after_planned_job(prediction,job,package,sim_time,timestep)
+            if prediction is None:
+                return None
+            rebuilt.append(job)
+            if job["pad_id"] is not None:
+                calendar[job["pad_id"]].append((job["charge_start"],job["charge_end"]))
+        new_routes = dict(routes)
+        new_routes[drone_id] = rebuilt
+        return dict(routes=new_routes)
+
+    beam = [dict(routes=seed_routes)]
     for package in pending:
-        choices = []
-        for drone in available.values():
-            required = calculate_required_battery(drone, package)
-            if required > drone.battery_capacity:
-                continue
-            # Preserve the existing reserve policy: 10% of current capacity,
-            # capped at that capacity (not a 10% multiplier on mission energy).
-            target = min(required + 0.10 * drone.battery_capacity, drone.battery_capacity)
-            added_energy = max(0.0, target - drone.battery)
-            charge_seconds = added_energy / drone.battery_capacity * FULL_CHARGE_TIME
-            pad = None
-            start = sim_time
-            if charge_seconds > 1e-9:
-                if not pad_ready:
+        expanded = list(beam)
+        for branch in beam:
+            for drone_id in future:
+                route = branch["routes"].get(drone_id,[])
+                if len(route) >= PREPARATION_JOBS_PER_DRONE:
                     continue
-                pad = min(pad_ready, key=lambda key: (
-                    pad_ready[key], key != drone.charging_pad, key))
-                start = pad_ready[pad]
-            ready = start + charge_seconds
-            arrival = ready + calculate_delivery_time(drone, package)
-            if arrival > package.deadline + 1e-9:
-                continue
-            choices.append({
-                "drone_id": drone.id, "package_id": package.id,
-                "required_energy": required, "target_battery": target,
-                "added_energy": added_energy, "pad_id": pad,
-                "charge_start": start, "charge_end": ready,
-                "predicted_arrival": arrival, "slack": package.deadline - arrival,
-            })
-        if not choices:
-            continue
-        selected = min(choices, key=lambda c: (
-            c["predicted_arrival"], c["added_energy"],
-            available[c["drone_id"]].total_flight_time, c["drone_id"]))
-        drone_id = selected["drone_id"]
-        # Copies keep candidate logs finite and independent of later state updates.
-        selected["alternatives"] = [dict(c) for c in choices]
-        plans[drone_id] = selected
-        del available[drone_id]
-        if selected["pad_id"] is not None:
-            pad_ready[selected["pad_id"]] = selected["charge_end"]
+                prefix = len(seed_routes.get(drone_id,[]))
+                suffix = [p["package_id"] for p in route[prefix:]]
+                # Insert at every position, replaying all affected missions and
+                # pad reservations. A three-job route can explore all six orders.
+                for position in range(len(suffix)+1):
+                    order = suffix[:position]+[package.id]+suffix[position:]
+                    trial = replay(drone_id,order,branch["routes"])
+                    if trial is not None:
+                        expanded.append(trial)
+        beam = select_diverse_beam(expanded,rank,min(beam,key=rank),sim_time)
+    winner = min(beam,key=rank)
+    plans = {}
+    for drone_id,route in winner["routes"].items():
+        alternatives = [dict(job) for branch in beam for jobs in branch["routes"].values()
+                        for job in jobs[:1] if job["package_id"] == route[0]["package_id"]]
+        plans[drone_id] = dict(route[0], sequence=[dict(job) for job in route], alternatives=alternatives,
+                              horizon_deliveries=sum(len(r) for r in winner["routes"].values()))
     return plans
 
 
-def manage_charging_infrastructure(drones, packages, charging_pads, sim_time):
-    plans = plan_fleet_preparation(drones, packages, charging_pads, sim_time)
+def opportunistic_readiness(drone, packages, covered, sim_time, timestep=1.0):
+    choices = []
+    for package in valid_pending_packages(packages, sim_time):
+        if package.id in covered:
+            continue
+        target = mission_departure_energy(drone,package)
+        if target > drone.battery_capacity:
+            continue
+        seconds = max(0.0,target-drone.battery)/drone.battery_capacity*FULL_CHARGE_TIME
+        if planning_tick(sim_time+seconds,sim_time,timestep)+calculate_delivery_time(drone,package) <= package.deadline+1e-9:
+            choices.append(dict(target_battery=target, seconds_to_ready=seconds,
+                                kind="uncovered_pending", package_id=package.id))
+    if choices:
+        return min(choices,key=lambda c:(c["seconds_to_ready"],c["package_id"]))
+    # Forecast only from already observed requests, never from future arrivals.
+    observed = sorted(
+        (p for p in packages.values() if p.request_time <= sim_time
+         and all(math.isfinite(v) for v in (p.x,p.y,p.weight,p.request_time))
+         and 0 <= p.weight <= 2.5),
+        key=lambda p:(p.request_time,p.id), reverse=True)[:50]
+    targets = [mission_departure_energy(drone,p) for p in observed
+               if mission_departure_energy(drone,p) <= drone.battery_capacity]
+    target = statistics.median(targets) if targets else LOW_BATTERY_FRACTION*drone.battery_capacity
+    return dict(target_battery=target,
+                seconds_to_ready=max(0.0,target-drone.battery)/drone.battery_capacity*FULL_CHARGE_TIME,
+                kind="recent_request_estimate" if targets else "fallback_20_percent",
+                sample_size=len(targets))
+
+
+def manage_charging_infrastructure(drones, packages, charging_pads, sim_time, timestep=1.0):
+    plans = plan_fleet_preparation(drones, packages, charging_pads, sim_time, timestep)
+    recovery = starvation_recovery_schedule(drones, charging_pads, sim_time, timestep, packages)
     eligible = charging_candidates_at_base(drones)
-    # Preserve pads held by drones outside this planner's scope.
+    for drone in drones.values():
+        drone.charging_managed = True
+        drone.recovery_charging = drone.id in recovery
+        drone.recovery_package = recovery[drone.id]["package_id"] if drone.id in recovery else None
+        drone.preparation_package = plans[drone.id]["package_id"] if drone.id in plans else None
+        drone.charging_basis = None
     new_pads = {
         pad: (owner if owner is not None and owner not in eligible else None)
         for pad, owner in charging_pads.items()
     }
     for drone in eligible.values():
-        drone.target_battery = (plans[drone.id]["target_battery"] if drone.id in plans
-                                else drone.battery_capacity)
-    # Execute only the current head of each pad's predicted queue.
+        drone.target_battery = (recovery[drone.id]["target_battery"] if drone.id in recovery
+                               else plans[drone.id]["target_battery"] if drone.id in plans
+                               else drone.battery_capacity)
+        if drone.id in recovery:
+            drone.charging_basis = dict(kind="starvation_recovery", **recovery[drone.id])
+        elif drone.id in plans:
+            drone.charging_basis = dict(kind="planned_delivery", package_id=plans[drone.id]["package_id"],
+                                       target_battery=drone.target_battery)
+    for drone_id, session in recovery.items():
+        if session["pad_id"] is not None:
+            new_pads[session["pad_id"]] = drone_id
+    # Future reservation is metadata only: never move an airborne drone onto a pad.
     for drone_id, plan in plans.items():
-        if plan["pad_id"] is not None and plan["charge_start"] <= sim_time + 1e-9:
+        if (drone_id in eligible and drone_id not in recovery and plan["pad_id"] is not None
+                and plan["charge_start"] <= sim_time + 1e-9):
             new_pads[plan["pad_id"]] = drone_id
-    # Fill otherwise unused pads, without charging a ready planned drone further.
-    opportunistic = sorted(
-        (d for d in eligible.values() if d.id not in plans and d.battery < d.battery_capacity),
-        key=lambda d: (d.charging_pad is None, d.battery / d.battery_capacity, d.id),
-    )
-    for drone in opportunistic:
+    covered = {job["package_id"] for plan in plans.values() for job in plan["sequence"]}
+    opportunistic = [d for d in eligible.values()
+                     if d.id not in plans and d.id not in recovery and d.battery < d.battery_capacity]
+    while opportunistic:
         free = [pad for pad, owner in new_pads.items() if owner is None]
         if not free:
             break
+        choices = [(d, opportunistic_readiness(d, packages, covered, sim_time, timestep))
+                   for d in opportunistic]
+        # Complete a useful readiness threshold before topping up ready drones.
+        drone, readiness = min(choices, key=lambda item: (
+            item[1]["seconds_to_ready"] <= 1e-9, item[1]["seconds_to_ready"],
+            item[0].charging_pad is None, item[0].id))
+        opportunistic.remove(drone)
         pad = drone.charging_pad if drone.charging_pad in free else free[0]
         new_pads[pad] = drone.id
-
-    # Commit together so a pad move cannot clear another drone's new allocation.
+        if readiness["kind"] == "uncovered_pending":
+            covered.add(readiness["package_id"])
+        drone.target_battery = (readiness["target_battery"] if readiness["seconds_to_ready"] > 1e-9
+                                else drone.battery_capacity)
+        drone.charging_basis = dict(readiness, kind=(readiness["kind"] if readiness["seconds_to_ready"] > 1e-9
+                                                   else "ready_drone_top_up"))
+        future_starts = [job["charge_start"] for plan in plans.values() for job in plan["sequence"]
+                         if job["pad_id"] == pad and job["charge_start"] > sim_time]
+        if future_starts:
+            # Fill a usable gap, yielding by the reserved start on the simulation clock.
+            drone.target_battery = min(drone.target_battery, drone.battery +
+                (min(future_starts)-sim_time) * drone.battery_capacity / FULL_CHARGE_TIME)
+            drone.charging_basis["yield_by"] = min(future_starts)
+        drone.charging_basis["allocated_target"] = drone.target_battery
     allocated = {owner: pad for pad, owner in new_pads.items() if owner is not None}
     charging_pads.update(new_pads)
     for drone in eligible.values():
         drone.charging_pad = allocated.get(drone.id)
         if drone.charging_pad is not None:
             drone.status = "CHARGING"
-        elif drone.id in plans and drone.battery + 1e-9 < drone.target_battery:
+        elif (drone.id in plans or drone.id in recovery) and drone.battery + 1e-9 < drone.target_battery:
             drone.status = "WAITING_FOR_CHARGE"
         else:
             drone.status = "IDLE"
     return plans
 
-def assign_packages_v2(drones, packages, sim_time, charging_pads):
-    schedule_packages(drones, packages, sim_time, charging_pads, "v2")
+def assign_packages_v2(drones, packages, sim_time, charging_pads, timestep=1.0):
+    schedule_packages(drones, packages, sim_time, charging_pads, "v2", timestep)
 
 def validate_fleet(drones, charging_pads, packages):
     validate_simulation(drones, charging_pads)
@@ -773,7 +1132,7 @@ def run_demo(duration=40 * 60, time_scale=DEFAULT_TIME_SCALE, headless=False,
                     package = generate_hard_package(len(packages) + 1, sim_time)
                     packages[package.id] = package
                     next_request += 10.0
-                scheduler(drones, packages, sim_time, charging_pads)
+                scheduler(drones, packages, sim_time, charging_pads, timestep=dt)
                 for drone in drones.values():
                     run_simulation_step(drone, packages, dt, sim_time, charging_pads)
                 sim_time += dt

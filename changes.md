@@ -2,8 +2,10 @@
 
 This document details the progression of the Drone Fleet Simulator project, outlining the specific problems encountered at each stage and the algorithmic solutions applied to solve them.
 
-**Current implementation:** Section 10 supersedes the independent per-drone
-prediction described in Sections 5 and 7. Earlier experimental numbers are
+**Current implementation:** Section 12 updates reserve consistency, evaluation,
+and multi-job throughput planning. Section 11 introduced future-available drones.
+These supersede the independent per-drone prediction in Sections 5 and 7.
+Earlier experimental numbers are
 historical; they do not establish the performance of the new fleet planner.
 In particular, status-based waiting metrics cannot establish fair V1/V2
 charging-wait comparisons.
@@ -292,3 +294,306 @@ invariant checks enabled (about 23 seconds of headless computation). This is
 an integration check, not evidence of superiority over V1: the workload's
 existing aggregate outcome and status-based wait reporting still has the
 previously identified evaluation limitations.
+
+---
+
+## 11. Future Fleet Availability, Shared Scheduling, and Stable Preparation
+
+### Why this change was needed
+
+The base-only planner could miss a package that a returning drone could serve
+without charging. It could also plan unnecessary charging for a drone whose
+current target was higher than the next mission needed. Future reservations
+require both a forecast and strict separation from physical execution.
+
+### Future state prediction
+
+`predict_drone_availability()` forecasts an empty drone at the base using a copy
+of its state. Idle, waiting, and charging drones at base are available now with
+their actual stored energy; existing charging targets are preemptible.
+Returning drones finish their remaining return leg. Delivering drones finish
+their current package with its current payload, then return empty. The current
+package owner and live drone state are never changed by forecasting.
+
+The forecast includes energy consumption and cycle-based capacity degradation.
+Whole-leg predictions conservatively subtract the capacity lost on each leg
+in addition to the existing consumption calculation, bounding a possible
+earlier capacity clamp in the physical time-step execution. Unsafe returns,
+failed drones, invalid telemetry, and inconsistent current missions are not
+future candidates. New-mission distances and energy always use the predicted
+base position, not the live airborne position.
+
+The physical flight and charging rates remain unchanged. In particular, adding
+25% of usable capacity takes 600 simulated seconds with a 40-minute recharge,
+regardless of playback speed. The reserve formula remains the capped additive
+10%-of-capacity policy from Section 10.
+
+### Coupled matching and charging intervals
+
+The planner builds candidates from predicted availability, battery and capacity.
+Every proposed pairing is evaluated against a shared calendar of charging-pad
+intervals. Charging cannot start before the drone returns. The planner searches
+free gaps between reservations, so an early-arriving drone can use a pad before
+a later reservation. Drones with sufficient energy require no pad reservation.
+
+A bounded beam search keeps six alternative partial matchings and their
+calendars while processing packages in deadline order. This lets it reconsider
+an early drone choice when another pairing covers more packages. Its ranking is:
+
+1. More packages covered by the current plan.
+2. Earlier total package deadlines for equal coverage.
+3. Lower total predicted arrival delay plus switching penalties.
+4. Lower additional charging energy, then accumulated flight time and stable IDs.
+
+This is a bounded heuristic, not a global optimizer or throughput guarantee.
+It still plans one next package per drone, excludes unknown future requests,
+and may miss better arrangements outside the retained alternatives.
+
+### Reservation stability
+
+Each drone stores only the ID of its temporary preparation package. Changing a
+still-relevant pairing adds five simulated seconds to the arrival-cost ranking.
+Thus small arrival improvements do not normally cause switching; extra package
+coverage or a sufficiently better feasible plan can override the preference.
+Invalid or completed reservations are cleared when replanning. This is a
+tunable heuristic, not a physical delay or irreversible lock.
+
+### Physical execution and timing
+
+Actual charging and package dispatch still require an empty, eligible drone
+physically at base. Future preparation only changes reservation metadata on
+airborne drones; it never changes their current mission or puts them on a pad.
+Opportunistic charging can fill gaps, with targets limited to the next reserved
+start. V2-managed waiting drones no longer autonomously take any free pad from
+inside `update_drone()`; the manager controls their pad access. Baseline and V1
+retain their previous charging-entry behavior.
+
+All schedulers accept an optional `timestep` argument, defaulting to one second
+for existing callers. The visual runner passes its actual 0.25-second step;
+both workload runners pass their existing one-second step. Predicted return
+availability and charging completion are rounded up to the next scheduler tick
+before evaluating the delivery deadline. Rates, distances, durations, seeds,
+arrival generation and metric definitions were not changed.
+
+Decision reports include forecast availability, battery/capacity at base,
+charging duration, pad intervals, alternatives, and predicted delivery arrival.
+Existing wait/outcome reporting limitations in the workload harness are outside
+this change and still prevent unsupported algorithm superiority claims.
+
+### Verification
+
+`tests/test_future_preparation.py` adds 16 passing tests covering read-only return
+forecasting, current-job completion before a next job, preemptible charging,
+correct charging units, no-charge future missions, airborne execution guards,
+shared-pad gaps, reconsidered matching for coverage, reservation stability and
+release, unsafe return exclusion, degradation, scheduler-tick boundaries,
+end-to-end return/charge/dispatch/delivery, controlled waiting, and opportunistic
+charging yielding to a future reservation.
+
+The existing 100-minute random workload completed with seed 42 in about 18
+seconds of headless computation. The saved report accounted for all 642
+packages: 216 on-time, 0 late, 412 rejected, 0 expired, 11 pending and 3 assigned.
+These are integration results, not proof of throughput improvement. The older
+`test_deadlines`, `test_deadline_expires`, and `test_charging_logic` still fail
+as before; they were not altered in this update.
+
+---
+
+## 12. Fair Evaluation and Throughput-Oriented Planning
+
+### Common safety constraint
+
+Baseline, V1, and V2 now all require round-trip mission energy plus 10% of the
+drone's current usable capacity before dispatch. `mission_departure_energy()`
+defines that rule once for feasibility checks, candidate reporting, and V2
+charging targets. A mission that cannot fit this full reserve within capacity
+is infeasible; unlike the older V2 formula, the reserve is not silently reduced
+by capping the departure target. The 10% value is a shared conservative policy
+parameter, not a claim of experimentally optimized or real-flight safety.
+
+V1's earlier ability to depart without this reserve made its throughput an
+unequal comparison. New results must not be compared directly with older
+V1 results without acknowledging this changed safety requirement.
+
+### Consistent wait episodes and outcomes
+
+The random workload uses the same physical low-battery predicate as the V2
+fairness monitor: empty at the base, no current package, battery below 20% of
+current capacity, and drone ID absent from the charging-pad occupancy map.
+`IDLE`, `WAITING_FOR_CHARGE`, and `CHARGING` labels do not define the metric.
+Airborne/busy drones and failed drones are excluded. This measures low-battery
+waiting, not proof that no delivery could be performed.
+
+Wait episodes store start, end, duration, and whether the interval was still
+ongoing at experiment end. Reports include cumulative wait per drone, longest
+observed individual episode, mean total wait across drones, and the worst
+observed episode across runs. State is observed before and after scheduling at
+the same timestamp and at each physical step boundary. Boundaries and pad
+utilization are sampled at one-second resolution; unfinished intervals remain
+censored observations rather than claims of completed queue waits.
+
+All six outcomes come from `summarize_packages()`: on-time, late, rejected,
+expired, pending and assigned/in-flight. Counts must sum to generated requests.
+Energy use is read from accumulated discharge/cycle counters rather than net
+battery change across ticks that may also contain charging. Final stored energy,
+flight time, pad utilization and failed-drone IDs are included for interpretation.
+
+### Reproducible paired evaluation
+
+`run_random_workload.py` defaults to seeds 42, 100 and 2026. For each seed it
+generates one immutable request/initial-battery workload using a local RNG, then
+replays copies for Baseline, V1 and V2. The RNG draw order and distributions from
+the original workload are preserved. A workload fingerprint is checked across
+policies to verify they received identical requests and starting batteries.
+
+Output includes per-seed results, means and sample standard deviations, the
+worst observed waiting episode, and paired V2-minus-V1 on-time differences.
+Three seeds provide an initial reproducibility check, not proof of statistical
+significance. A unique benchmark JSON preserves results and per-drone episodes;
+detailed decision logs are enabled by default. `--no-decision-logs` omits those
+bulky histories during evaluation without changing decisions. Errors writing
+reports are no longer silently swallowed.
+
+### Multi-job planning objective
+
+Each V2 beam branch now projects up to three successive jobs per drone. Every
+job includes charging, delivery, empty return, energy use, degradation and the
+next tick when the drone can depart again. Shared-pad intervals across the
+whole branch cannot overlap. Only each drone's first job is executable; later
+jobs are forecasts which will be reconsidered at the next scheduling tick.
+
+The rank maximizes the number of predicted on-time jobs first, then minimizes:
+
+`sum(charging_seconds / pad_count + mission_seconds / drone_count)`
+
+plus a smaller arrival-delay/stability term:
+
+`0.05 * (sum(predicted_arrival - now) + 5 seconds per changed first pairing)`.
+
+Earlier deadlines, accumulated flight time and stable IDs break remaining ties.
+Charging and flight resource consumption therefore influence decisions directly,
+rather than being subordinate to the sum of deadlines. An explicit skip branch
+is retained so one expensive early package need not eliminate the alternative
+of serving several shorter jobs. The six-branch search and three-job horizon
+are bounded heuristics, not an optimal plan or a guarantee of improved throughput.
+
+### Fairness safeguard
+
+V2 gives recovery charging priority after a continuous low-battery base wait
+reaches 600 simulated seconds. Recovery proceeds to 20% of current capacity,
+reserving that pad time before delivery planning and remaining active across
+ticks until complete. Mission dispatch cannot interrupt recovery below its
+service target. Opportunistic or planned preparation uses the remaining capacity.
+
+The 600-second value is a configurable intervention threshold, not a guaranteed
+maximum wait: simultaneous overdue drones can exceed it when pads are occupied
+by other recovery sessions. The safeguard addresses starvation without requiring
+equal charging durations, and may trade some throughput for service fairness.
+Baseline and V1 do not acquire this V2 scheduling rule; they do receive the same
+safety reserve and are measured with the same waiting definition.
+
+### Scope and verification
+
+Physical rates, workload duration (100 minutes), distances (3000-6000 pixels),
+request frequency/weight/slack distributions, starting battery distribution,
+fleet size, pad count, and simulation step are unchanged. Only the requested
+reserve, scheduling, measurement, and evaluation behavior changed.
+
+The 16 future-preparation tests were retained and adapted where one-job-only
+assumptions no longer apply. Eleven new tests cover reserve equality, infeasible
+reserves, airborne exclusion, pad-map-based waits, episode censoring, sequential
+multi-job energy/time, skipping expensive jobs, recovery continuity, dispatch
+guards, deterministic workloads, and outcome reconciliation: 27 focused tests
+pass. Historical tests outside these changes are reported separately.
+
+### Fixed-seed results (42, 100, 2026)
+
+All nine 100-minute runs completed with matching workload fingerprints and zero
+failed drones or late deliveries. Decision-history serialization was disabled
+for these validation runs; the saved benchmark JSON retains all outcome counts,
+per-drone wait episodes, censoring flags, and aggregate metrics.
+
+| Policy | On-time, mean +/- sample SD | Worst observed single wait |
+| --- | ---: | ---: |
+| Baseline | 116.67 +/- 1.53 | 5741 s |
+| V1 | 221.33 +/- 1.53 | 5648 s |
+| V2 | 220.00 +/- 1.00 | 600 s |
+
+The paired V2-minus-V1 differences were -1, -2 and -1 deliveries. V2 therefore
+remained slightly below V1 on throughput (about 0.6% on these means), while
+reducing the worst observed low-battery episode substantially. These results
+do not establish V2 throughput superiority or a universal 600-second bound.
+No parameter tuning was performed against these seeds after observing results.
+
+The 40-minute graphical-runner simulation path also completed headlessly at
+its 0.25-second step with all 240 requests on time and no failed drones.
+The three historical failures (`test_deadlines`, `test_deadline_expires`,
+`test_charging_logic`) remain unchanged. The 27 focused tests passed.
+
+## 13. Delivery-focused recovery, ordering, beam diversity and spare charging
+
+Implemented the four requested V2 improvements and documented them in README.md.
+This section supersedes Section 12's fixed-20% mission-recovery behavior.
+
+- Recovery after 600 seconds of low-battery waiting now chooses a distinct,
+  deadline-feasible pending delivery for each serviced drone. Its target is the
+  full round-trip energy plus the unchanged common safety reserve. A ready drone
+  needs no pad and may depart below 20%. The recovery pairing remains preferred
+  while feasible and is released on dispatch or invalidation. If no suitable
+  pending job exists, recovery still charges to 20%.
+- Recovery mission heads are included in the fleet forecast before ordinary
+  planning, so their packages and pad intervals cannot be double-booked.
+- The bounded three-job planner tries insertion at every position in a retained
+  drone route, recalculating energy, degradation, delivery/return times and shared
+  charging slots. Recovery heads stay fixed until dispatched or invalidated;
+  other drones' existing forecast intervals are protected during each trial.
+- The six-plan beam deduplicates exact routes, retains the best plan and the best
+  skip alternative, and prioritizes competitive, structurally distinct plans.
+  Strategy signatures ignore drone/pad labels and bucket charging durations and
+  starts into simulated-minute intervals. A diverse candidate must cover the
+  same number of jobs as the best and have resource/delay cost no more than the
+  best plus `max(10, 0.25 * abs(best_cost))`. Remaining slots use the normal rank.
+  These bounds are heuristics, not an exhaustive permutation search.
+- Optional charging ranks drones by time to useful readiness. Uncovered feasible
+  pending requests supply the first-choice target; otherwise the median mission
+  target from up to 50 already-observed requests supplies an estimate, with 20%
+  fallback. Under-target drones precede already-ready top-ups. Targets are capped
+  by the next reservation on the selected pad, including later forecast jobs.
+- Drone metadata records recovery package and charging basis, exposed in package
+  decision reports. No future arrivals are used as prediction input, and all
+  actual dispatches retain the normal energy and deadline checks.
+
+All physical parameters, workload distributions, three fixed seeds, safety
+reserve and the common physical waiting metric remain unchanged. Baseline and
+V1 scheduling are unchanged. No month-long simulation was run.
+
+### Regression verification
+
+Twelve additional tests cover the new behavior, and the old fixed-20% dispatch
+test now checks the safe mission-specific target. All 39 focused unittest tests
+pass. Six of nine historical function-style tests pass; the same three legacy
+failures recorded in Section 12 remain, with no edits to that test file.
+
+### Unchanged-workload comparison after implementation
+
+All nine 100-minute runs completed for seeds 42, 100 and 2026. Workload
+fingerprints match both the other policies and Section 12's earlier runs.
+Baseline and V1 outcomes are unchanged. Every run had zero failed drones and
+zero late deliveries.
+
+| Policy | On-time, mean +/- sample SD | Worst observed single wait |
+| --- | ---: | ---: |
+| Baseline | 116.67 +/- 1.53 | 5741 s |
+| V1 | 221.33 +/- 1.53 | 5648 s |
+| Updated V2 | 219.33 +/- 1.15 | 600 s |
+
+Updated V2 delivered 220, 220 and 218 packages on time. Its paired differences
+from V1 were -1, -3 and -2. The earlier V2 delivered 220, 221 and 219 on the same
+seeds, so the new mean is lower by 0.67 deliveries, not an improvement. The new
+behaviors work in the regression scenarios but have not demonstrated a stress
+throughput benefit. This result is retained without seed-specific tuning.
+
+The comparison report is `benchmark-20260914T123838328935Z.json` under the task's
+`outputs/fleet-comparison-improvements/` folder. The 40-minute demo also completed
+headlessly at the unchanged 0.25-second step in 14.1 wall-clock seconds, with all
+240 packages on time and no failed drones; graphical playback was not exercised.

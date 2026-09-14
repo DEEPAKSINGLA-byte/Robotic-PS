@@ -58,6 +58,12 @@ class DroneState:
     total_charge_wait_time: float = 0.0
     wait_start_time: Optional[float] = None
     target_battery: float = 100.0
+    preparation_package: Optional[int] = None
+    charging_managed: bool = False
+    low_battery_wait_since: Optional[float] = None
+    recovery_charging: bool = False
+    recovery_package: Optional[int] = None
+    charging_basis: Optional[dict] = None
 
 
 @dataclass
