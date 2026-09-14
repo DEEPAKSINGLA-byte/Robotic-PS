@@ -2,6 +2,12 @@
 
 This document details the progression of the Drone Fleet Simulator project, outlining the specific problems encountered at each stage and the algorithmic solutions applied to solve them.
 
+**Current implementation:** Section 10 supersedes the independent per-drone
+prediction described in Sections 5 and 7. Earlier experimental numbers are
+historical; they do not establish the performance of the new fleet planner.
+In particular, status-based waiting metrics cannot establish fair V1/V2
+charging-wait comparisons.
+
 ## 1. Establishing the Foundation: The Baseline Simulator
 **The Problem:**
 Before building a complex scheduler, we needed a reliable testing environment. The initial simulator only handled basic drone physics (movement, battery drain) for a single drone. We lacked a way to test fleet-wide behaviors, continuous package arrivals, and shared charging infrastructure.
@@ -200,3 +206,89 @@ Fleet-level resource management
 ```
 
 **Conclusion:** The scheduler evolved from simply selecting drones for packages, to actively managing the complex interaction between drones, pending missions, physical battery state, and the shared charging infrastructure.
+
+---
+
+## 10. Coordinated Fleet Charging Preparation
+
+### Problem addressed
+
+The previous `predict_mission_needs()` ran independently for each drone. Several
+drones could select the same pending package and prepare duplicate capacity,
+while other packages received no preparation. It also filtered candidates by
+current battery, excluding the very jobs for which charging was necessary.
+
+### Implemented behavior
+
+- `plan_fleet_preparation()` now considers the pending queue and available
+  drones together. Only empty, available drones physically at the base are
+  eligible; airborne, failed, and already assigned drones are excluded.
+- Pending packages are processed by earliest deadline, then request time and
+  package ID. Each package is paired with at most one drone, and each drone
+  prepares for at most one next package in a planning pass.
+- Candidate feasibility includes return-flight energy, degraded capacity,
+  charging time, predicted waiting for a shared pad, and delivery arrival time.
+  A drone may be selected even when its current battery cannot fly the mission.
+- The existing reserve formula is retained:
+  `target = min(round_trip_energy + 0.10 * current_capacity, current_capacity)`.
+  This is an additive reserve based on capacity, not `mission_energy * 1.10`.
+- A shared pad calendar reserves non-overlapping predicted charging intervals.
+  For each package, the planner chooses the earliest achievable arrival; ties
+  use added charging energy, accumulated flight time, and drone ID.
+- `manage_charging_infrastructure()` starts the head of each pad queue and
+  allows unpaired drones to top up on unused pads. Opportunistic sessions can
+  be preempted for planned demand. Pad ownership changes are committed together
+  to preserve consistency when drones move between pads.
+- V2 dispatch uses the same plan and waits until the selected drone reaches
+  its preparation target. It cannot take another package's prepared drone.
+  Baseline and V1 assignment behavior is unchanged.
+- Preparation is temporary: it does not set `package.assigned_drone`. The plan
+  is rebuilt every scheduling tick, so cancellation, expiry, new arrivals, or
+  battery changes can release or alter a pairing. Physical ownership starts
+  only on dispatch.
+- Existing decision reports now include V2's selected preparation, candidate
+  alternatives, target energy, pad interval, and predicted arrival. Existing
+  weighted score components remain diagnostic; the fleet preparation pairing
+  determines V2's selected drone.
+
+### Example
+
+With three pending packages and three eligible drones, the planner can prepare
+`D1 -> P1`, `D2 -> P2`, and `D3 -> P3`, rather than preparing all three for P1.
+If only one pad exists, the predicted charging sessions occur sequentially.
+A pairing is omitted when that waiting time makes its deadline unreachable.
+An omitted pairing does not itself reject the package; normal request outcome
+handling still controls rejection and expiry.
+
+### Scope and limitations
+
+Distances, request generation, simulation duration, playback speed, battery
+physics, and benchmark metrics were not changed by this update. It does not
+implement the separately discussed waiting-metric corrections.
+
+This is a deterministic, greedy fleet heuristic, not a global optimizer or a
+proof that every feasible package can be served. It plans only one next mission
+per currently available drone. Future returning drones, unknown requests, and
+multi-job routes are not forecast. Replanning can change a pairing; no switching
+penalty or guaranteed starvation prevention is implemented. The simulator still
+assumes immediate pad preemption with no physical pad-transfer delay. Timing
+predictions are continuous estimates, while execution uses the caller's time
+step, so exact-boundary deadlines can be sensitive to simulation resolution.
+
+### Verification
+
+Added `tests/test_fleet_preparation.py` with 12 passing tests covering unique
+pairings, energy-deficient candidates, shared-pad queue timing, infeasible
+deadlines after charging, no-pad behavior, dispatch consistency, end-to-end
+charging and delivery, invalidated plans, opportunistic preemption, degraded
+capacity, pad invariants, and excluded airborne/future/invalid candidates.
+
+Before this update, the existing suite already failed `test_deadlines`,
+`test_deadline_expires`, and `test_charging_logic`. Those older tests were left
+unchanged; their failures must not be interpreted as new regression results.
+
+The unchanged 100-minute random workload also completed with seed 42 and fleet
+invariant checks enabled (about 23 seconds of headless computation). This is
+an integration check, not evidence of superiority over V1: the workload's
+existing aggregate outcome and status-based wait reporting still has the
+previously identified evaluation limitations.
