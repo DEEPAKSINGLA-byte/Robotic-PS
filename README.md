@@ -48,7 +48,83 @@ This runs 40 simulated minutes with 24x playback (about 100 real seconds,
 subject to machine performance). Use `--time-scale 20` for approximately
 two real minutes, or `--headless` to run as fast as the computer allows.
 For example: `python3 simulation.py --headless --minutes 40 --algorithm v1`.
-Algorithms: `baseline`, `v1`, `v2` (default).
+Algorithms: `baseline`, `v1`, `v2` (default), and `fsm`.
+
+### Run the new assignment FSM
+
+From this project folder, run:
+
+```bash
+python3 simulation.py --algorithm fsm
+```
+
+FSM means **Finite State Machine**. Here it controls package assignment, not the
+flight physics. Its states are `CHECK_PACKAGE`, `CHECK_FEASIBILITY`,
+`CHECK_READINESS`, `CHECK_URGENCY`, `SELECT_DRONE`, `PREPARE`, `ASSIGN`, `WAIT`,
+`REJECT`, `EXPIRED`, and `DONE`.
+
+The FSM makes the drone choice. It does not call the V1/V2 weighted scores or
+V2's beam planner. The shared charging code follows the FSM's chosen pairings.
+V1 and V2 remain separate comparison modes; their disabled selection code has
+been restored. The default mode is still V2.
+
+The rules are:
+
+1. Reject an invalid or impossible request. Keep a temporarily blocked request
+   waiting. A package already on a drone keeps its owner.
+2. Check delivery energy, return energy, the full 10% reserve, payload and
+   deadline. Returning or charging drones can be future options, but cannot
+   leave before they are physically ready.
+3. Handle the existing starvation-recovery reservations first. Other packages
+   are considered in order of least spare time. Spare time means **deadline
+   minus earliest safe arrival**, including any return or charging delay.
+4. Prefer a drone ready now. Do not wait for another drone just because its
+   battery is fuller. A charging drone may leave if it already has enough safe
+   mission energy; its pad is released before departure.
+5. If spare time is at most one simulation step, choose the earliest safe
+   arrival. Otherwise, first try to save a drone that is the only option for
+   another waiting package, then choose the earliest arrival. Remaining ties
+   favor overdue low-battery waiters, less-used drones, then smaller excess
+   battery and a stable drone ID. There are no weighted cost sums.
+6. If charging or a return is needed, record `PREPARE -> WAIT`. The package is
+   not physically assigned yet. The next simulation tick checks again. Changed
+   or expired requests release their old preparation pairing.
+7. Just before assignment, check safety and ownership again. One drone cannot
+   receive two packages at the same time. Future charging slots cannot overlap
+   on one pad. Decision logs show the state changes, reasons, spare time,
+   candidate plans and chosen rule.
+
+This is a simple, one-next-job-per-drone rule-based policy. It is not an optimal
+fleet schedule and is not guaranteed to beat V1 or V2. The existing starvation
+rule and spare-pad charging behavior are reused. A 600-second recovery trigger
+is not a guaranteed maximum wait. The physical drone states and optional
+communication-failure handling have not been rewritten into a new FSM.
+
+To run one repeatable stress test without the display:
+
+```bash
+python3 run_random_workload.py --policies fsm --seeds 42 --no-decision-logs
+```
+
+This keeps the existing 100 simulated minutes, distances, battery settings and
+request generation. `--policies baseline v1 v2 fsm` compares all four modes;
+without this option the original three-mode comparison remains the default.
+Drop `--no-decision-logs` when you want full decision traces saved as well.
+
+Run the focused FSM checks with:
+
+```bash
+python3 -B -m unittest discover -s tests -p 'test_assignment_fsm.py' -v
+```
+
+First FSM check: all 28 focused tests passed. One unchanged seed-42 stress run
+finished in 18.2 real seconds. Of 642 packages, 205 arrived on time, 423 were
+rejected, 12 were still waiting and 2 were in flight. None arrived late, none
+expired, and no drone failed. The longest observed low-battery wait was 600
+simulated seconds. The earlier V1 and V2 runs on the identical workload delivered
+221 and 220 on time, respectively; they were not rerun in this check. This FSM
+version therefore has not shown a delivery-count improvement. No tuning was
+done after seeing the result, and one seed does not prove general performance.
 
 All movement, battery use, charging, deadlines, and request arrivals use
 simulated seconds. Playback changes only how quickly those seconds pass.

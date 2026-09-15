@@ -597,3 +597,73 @@ The comparison report is `benchmark-20260914T123838328935Z.json` under the task'
 `outputs/fleet-comparison-improvements/` folder. The 40-minute demo also completed
 headlessly at the unchanged 0.25-second step in 14.1 wall-clock seconds, with all
 240 packages on time and no failed drones; graphical playback was not exercised.
+
+## 14. Separate rule-based assignment FSM
+
+Built on the user's unfinished `AssignmentState` enum. Added an opt-in `fsm`
+policy, while retaining the `v2` default. Restored the disabled V1/V2 feature,
+score and selection code so both comparison modes can assign packages again.
+The original physical drone states and flight/charging calculations were not
+rewritten. Fleet size, pad count, distances, deadlines, workloads, reserve and
+playback settings are unchanged.
+
+The assignment FSM has explicit allowed transitions and a trace for every
+decision attempt. Validation, feasibility, readiness, urgency, selection,
+preparation, assignment and waiting are separate states. Each scheduler tick
+retries pending packages; rejected and expired requests leave the waiting flow.
+Already assigned packages retain their physical owner. Candidate plans are
+dictionaries addressed by drone ID, matching the scheduler's actual data format.
+
+The FSM owns normal drone selection instead of receiving the single pair already
+selected by V2. It does not invoke either weighted score function or V2's beam
+planner. The shared charging executor was extracted into `apply_charging_plan()`;
+it follows the supplied pairings and reservations. V2 still supplies its own
+original plans to that executor. The existing explicit starvation-recovery rule
+is reused before normal FSM decisions, including mission-specific recovery
+targets and the 20% fallback when no suitable delivery exists.
+
+Requests are ordered by spare time after the earliest safe arrival, with recovery
+reservations first. Ready drones are preferred over future options. Critical
+means at most one scheduling step of spare time, not an arbitrary 20/40 seconds.
+Critical requests use earliest safe arrival. Normal requests first preserve a
+drone uniquely needed by another pending package, then prefer earliest arrival.
+Remaining ties use overdue low-battery waiting, accumulated flight time, excess
+battery and stable drone ID. These are ordered rules, not a weighted cost sum.
+
+The FSM can prepare one next job per drone, including future return and charging
+time. Preparation does not transfer package ownership. Actual dispatch rechecks
+physical readiness, battery reserve, payload, deadline and pad ownership, releases
+the pad and commits the assignment synchronously. Tests cover conflicting
+requests, duplicate ticks, changed requests, busy pads and departure directly
+from charging. This is a greedy rule-based policy, not an optimal matching or a
+complete server/client fault-handling FSM.
+
+Added `--algorithm fsm` to the main runner and optional `--policies` selection to
+the random-workload runner. Its default remains Baseline/V1/V2. The latter file
+remains ignored by Git under the repository's existing `.gitignore`; its working
+copy was updated, but the ignore rules and staging were not changed.
+
+### Verification
+
+All 28 new focused tests passed, including a check that FSM never calls the old
+scores or beam planner, accurate slack, safe sub-20% departure, charging followed
+by retry, quarter-second stepping, no double assignment, unique shared-pad slots,
+future-reservation yielding, invalid battery exclusion, recovery and deterministic
+replay. The older test files referred to by historical sections were absent in
+this checkout and were not rerun. `git diff --check` passed.
+
+Ran exactly one full FSM workload: seed 42, unchanged 100 simulated minutes,
+642 requests, 18.159 seconds wall time. Outcomes: 205 on time, 0 late, 423 rejected,
+0 expired, 12 pending and 2 in flight. No drones failed; longest observed physical
+low-battery wait was 600 simulated seconds, and pad utilization was about 97.9%.
+This is an observation, not a guaranteed wait bound.
+
+The workload fingerprint matches the previously recorded seed-42 comparison.
+Those earlier runs delivered 221 on time for V1 and 220 for V2; neither policy
+was rerun in this validation. The FSM delivered fewer packages on this workload.
+The result was retained without seed-specific tuning or any claim of throughput
+superiority. Graphical rendering was not tested.
+
+Report: `benchmark-20260914T213215806969Z.json` under this task's
+`outputs/fsm-validation/` directory. Full decision serialization was disabled for
+the workload run; the focused tests verify the FSM transition records themselves.
