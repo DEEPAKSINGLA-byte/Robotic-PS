@@ -275,4 +275,22 @@ The baseline considers:
 - workload balancing
 
 This is intentionally a simple baseline, not the final optimization algorithm.
+
+## Covered Edge Cases
+
+The simulator currently handles the following critical edge cases to ensure realistic and robust fleet behavior:
+
+1. **Wind suddenly makes an active delivery impossible**: A real-time telemetry monitor runs every simulation step (0.25s), checking current wind conditions. If wind causes the safety margin to drop below 10% or makes the deadline impossible, the drone aborts and safely returns the package to base.
+2. **Wind makes delivery possible but return impossible**: The telemetry monitor separately projects outbound and inbound energy requirements. It will abort a mission if the combined energy (including the empty return leg against a headwind) exceeds the safe battery threshold.
+3. **All three charging pads are occupied**: Drones dynamically transition to `WAITING_FOR_CHARGE` and queue up when pads are full. The V2 scheduler plans around pad availability and explicitly calculates future charging times before making assignments.
+4. **Several low-battery drones reach the base simultaneously**: The charging system handles contention. V2 specifically prioritizes pad reservations for drones that can serve the most urgent pending packages fastest.
+5. **An urgent package arrives while every drone is committed**: The scheduler defers the package (leaves it `PENDING`) rather than rejecting it outright. It will continually re-evaluate the package until a drone frees up or the deadline expires.
+6. **Package deadline is already impossible when it arrives**: The scheduler instantly marks mathematically impossible packages (where even a fully charged, immediately available drone would be late) as `REJECTED` to save computation.
+7. **Package is overweight**: The physics system strictly enforces the 2.5 kg payload limit. Overweight packages are instantly `REJECTED`.
+8. **Package arrives exactly when deadline expires / Drone reaches package exactly at deadline**: Boundary conditions are handled precisely. Exact deadline equality is considered `ON_TIME`.
+9. **Drone returns to base with almost zero battery**: Drones successfully queue for charging even if they land with fractions of a percent of battery remaining.
+10. **Mid-flight reassignment**: Drones physically commit to carrying a package once assigned. If aborted, they do not drop it or teleport; they carry the package back to base and deposit it in the `PENDING` queue.
+11. **Invalid telemetry**: Drones reporting invalid state (NaN positions, negative battery, impossible capacities) are quarantined and excluded from assignments.
+12. **Drone has enough total battery but not enough usable battery after degradation**: Battery degradation is accurately simulated per charge cycle. The scheduler plans using the degraded capacity, not the nameplate capacity.
+
 # Swarm_drones

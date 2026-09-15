@@ -140,9 +140,8 @@ def plan_fleet_preparation(drones, packages, charging_pads, sim_time):
             required = calculate_required_battery(drone, package)
             if required > drone.battery_capacity:
                 continue
-            # Preserve the existing reserve policy: 10% of current capacity,
-            # capped at that capacity (not a 10% multiplier on mission energy).
-            target = min(required + 0.10 * drone.battery_capacity, drone.battery_capacity)
+            # Preserve the existing reserve policy but add 1% buffer to avoid floating point aborts
+            target = min(required + 0.11 * drone.battery_capacity, drone.battery_capacity)
             added_energy = max(0.0, target - drone.battery)
             charge_seconds = added_energy / drone.battery_capacity * FULL_CHARGE_TIME
             pad = None

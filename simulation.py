@@ -13,6 +13,8 @@ from assignment_costs.features import *
 from assignment_costs.v1_cost import *
 from assignment_costs.v2_cost import *
 from assignment_costs.baseline_cost import *
+from wind import *
+from telemetry import evaluate_mission_state
 
 
 def should_create_hard_package(sim_time):
@@ -63,7 +65,8 @@ def get_feasible_drones(drones, package, sim_time):
             feasible.append(drone)
 
     return feasible
-def update_drone(drone, packages, dt, charging_pads, sim_time=0.0):
+def update_drone(drone, packages, dt, charging_pads, sim_time=0.0, wind_events=None):
+    wind_events = [] if wind_events is None else wind_events
 
     remaining_dt = dt
 
@@ -76,12 +79,31 @@ def update_drone(drone, packages, dt, charging_pads, sim_time=0.0):
             if drone.current_package is None:
                 return
             package = packages[drone.current_package]
+            
+            telemetry = evaluate_mission_state(drone, package, sim_time, wind_events)
+            if not hasattr(package, 'telemetry_history'):
+                package.telemetry_history = []
+            package.telemetry_history.append(telemetry)
+            
+            if telemetry["status"] == "ABORT":
+                if not hasattr(package, 'decision_history'):
+                    package.decision_history = []
+                package.decision_history.append({
+                    "sim_time": sim_time,
+                    "action": "ABORTED",
+                    "reason": telemetry["reason"]
+                })
+                drone.status = "RETURNING"
+                drone.target = (BASE[0], BASE[1])
+                continue
 
             distance_moved, actual_time, reached = move_towards(
                 drone,
                 drone.target,
                 speed_pixels,
-                remaining_dt
+                remaining_dt,
+                sim_time,
+                wind_events
             )
             
             drone.total_distance += distance_moved
@@ -116,7 +138,9 @@ def update_drone(drone, packages, dt, charging_pads, sim_time=0.0):
                 drone,
                 drone.target,
                 speed_pixels,
-                remaining_dt
+                remaining_dt,
+                sim_time,
+                wind_events
             )
             
             drone.total_distance += distance_moved
@@ -133,6 +157,19 @@ def update_drone(drone, packages, dt, charging_pads, sim_time=0.0):
                 return
 
             if reached:
+                if drone.current_package is not None:
+                    pkg = packages[drone.current_package]
+                    if not pkg.delivered:
+                        pkg.status = "PENDING"
+                        pkg.assigned_drone = None
+                        if not hasattr(pkg, 'decision_history'):
+                            pkg.decision_history = []
+                        pkg.decision_history.append({
+                            "sim_time": sim_time,
+                            "action": "RETURNED_TO_BASE",
+                            "reason": "Dropped aborted package at base"
+                        })
+                
                 drone.target = None
                 drone.payload = 0.0
 
@@ -253,7 +290,7 @@ def schedule_packages(drones, packages, sim_time, charging_pads, algorithm):
     if algorithm == "v2":
         preparation = manage_charging_infrastructure(drones, packages, charging_pads, sim_time)
     package_plans = {plan["package_id"]: plan for plan in preparation.values()}
-    allowed = ("IDLE",) if algorithm == "baseline" else ("IDLE", "WAITING_FOR_CHARGE", "CHARGING")
+    allowed = ("IDLE", "WAITING_FOR_CHARGE", "CHARGING") if algorithm == "v2" else ("IDLE",)
     for package in packages.values():
         if package.status != "PENDING" or package.assigned_drone is not None or package.delivered:
             continue
@@ -359,8 +396,8 @@ def validate_fleet(drones, charging_pads, packages):
         if package.assigned_drone not in (None, -1):
             assert package.assigned_drone in drones, f"Package {package.id} assigned to invalid drone {package.assigned_drone}"
 
-def run_simulation_step(drone, packages, dt, sim_time, charging_pads):
-    update_drone(drone, packages, dt, charging_pads, sim_time)
+def run_simulation_step(drone, packages, dt, sim_time, charging_pads, wind_events=None):
+    update_drone(drone, packages, dt, charging_pads, sim_time, wind_events)
 
 def initialize_drones(num_drones=10):
     drones = {}
@@ -387,7 +424,8 @@ SIMULATION_STEP = 0.25
 
 
 def run_demo(duration=40 * 60, time_scale=DEFAULT_TIME_SCALE, headless=False,
-             algorithm="v2", log_dir="logs"):
+             algorithm="v2", log_dir="logs", seed=42):
+    wind_events = generate_wind_events(seed, duration)
     drones = initialize_drones()
     packages = {}
     charging_pads = {1: None, 2: None, 3: None}
@@ -411,7 +449,7 @@ def run_demo(duration=40 * 60, time_scale=DEFAULT_TIME_SCALE, headless=False,
                     next_request += 10.0
                 scheduler(drones, packages, sim_time, charging_pads)
                 for drone in drones.values():
-                    run_simulation_step(drone, packages, dt, sim_time, charging_pads)
+                    run_simulation_step(drone, packages, dt, sim_time, charging_pads, wind_events)
                 sim_time += dt
                 update_package_outcomes(drones, packages, sim_time)
                 validate_fleet(drones, charging_pads, packages)
@@ -437,10 +475,11 @@ def main():
     parser.add_argument("--headless", action="store_true", help="Run without graphics or playback delays")
     parser.add_argument("--algorithm", choices=("baseline", "v1", "v2"), default="v2")
     parser.add_argument("--log-dir", default="logs")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for wind events")
     args = parser.parse_args()
     if not math.isfinite(args.minutes) or args.minutes <= 0 or not math.isfinite(args.time_scale) or args.time_scale <= 0:
         parser.error("minutes and time-scale must be finite positive numbers")
-    run_demo(args.minutes * 60, args.time_scale, args.headless, args.algorithm, args.log_dir)
+    run_demo(args.minutes * 60, args.time_scale, args.headless, args.algorithm, args.log_dir, args.seed)
 
 
 if __name__ == "__main__":

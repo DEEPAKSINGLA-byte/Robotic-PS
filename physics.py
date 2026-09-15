@@ -1,7 +1,7 @@
 import math
 from drone_sim import BASE
 
-def move_towards(drone, target, speed, dt):
+def move_towards(drone, target, speed, dt, sim_time, wind_events):
     target_x, target_y = target
 
     dx = target_x - drone.x
@@ -12,25 +12,47 @@ def move_towards(drone, target, speed, dt):
     if distance == 0:
         return 0.0, 0.0, True
 
-    movement = speed * dt
-
-    if movement >= distance:
-        # Drone reaches target before dt is finished
-        actual_time = distance / speed
-
+    # 1. Base drone movement (nose pointing at target)
+    direction_x = dx / distance
+    direction_y = dy / distance
+    
+    movement_x = direction_x * speed
+    movement_y = direction_y * speed
+    
+    # 2. Get wind and convert to pixels/s
+    from wind import get_wind
+    wind_x_m, wind_y_m = get_wind(drone.x, drone.y, sim_time, wind_events)
+    wind_x_px = meters_to_pixels(wind_x_m)
+    wind_y_px = meters_to_pixels(wind_y_m)
+    
+    # 3. Apply wind drift
+    actual_vx = movement_x + wind_x_px
+    actual_vy = movement_y + wind_y_px
+    
+    actual_movement_x = actual_vx * dt
+    actual_movement_y = actual_vy * dt
+    
+    actual_distance = math.sqrt(actual_movement_x**2 + actual_movement_y**2)
+    
+    # 4. Check if we reached target
+    # Project movement onto the vector to the target to see if we passed it
+    progress = (actual_movement_x * dx + actual_movement_y * dy) / distance
+    
+    if progress >= distance:
+        # Reached target
+        fraction = distance / max(progress, 1e-9)
+        actual_time = dt * fraction
+        
         drone.x = target_x
         drone.y = target_y
-
+        
         return distance, actual_time, True
 
     # Drone does not reach target
-    direction_x = dx / distance
-    direction_y = dy / distance
+    drone.x += actual_movement_x
+    drone.y += actual_movement_y
 
-    drone.x += direction_x * movement
-    drone.y += direction_y * movement
-
-    return movement, dt, False
+    return actual_distance, dt, False
 
 def calculate_battery_consumption(time, payload):
     FULL_PAYLOAD = 2.5
@@ -110,7 +132,8 @@ def is_mission_feasible(drone, package, sim_time):
     if delivery_time > remaining_deadline:
         return False
     required_battery = calculate_required_battery(drone, package)
-    if required_battery > drone.battery:
+    reserve_energy = drone.battery - required_battery
+    if reserve_energy < 0.11 * drone.battery_capacity:
         return False
     return True
 

@@ -13,7 +13,7 @@ def test_movement():
     speed_pixels = 120.0
     dt = 1/12
     
-    distance_moved, actual_time, reached = simulation.move_towards(drone, target, speed_pixels, dt)
+    distance_moved, actual_time, reached = simulation.move_towards(drone, target, speed_pixels, dt, -1.0, [])
     assert reached == True, "Drone should have reached the target"
     assert abs(drone.x - 10.0) < 1e-6, "Drone x position incorrect"
     assert abs(drone.y - 0.0) < 1e-6, "Drone y position incorrect"
