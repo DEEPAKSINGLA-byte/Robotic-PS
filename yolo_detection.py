@@ -99,13 +99,10 @@ class YoloNode(Node):
     def apply_dbscan(self, points):
         if points is None or len(points) == 0:
             return None
-            
-        # Use Open3D's optimized DBSCAN instead of sklearn for massive performance gains
         import open3d as o3d
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
-        
-        # DualMap uses eps=0.02, we'll use 0.05 as a safe middle ground
+
         labels = np.array(pcd.cluster_dbscan(eps=0.05, min_points=10, print_progress=False))
         
         valid_labels = labels[labels != -1]
