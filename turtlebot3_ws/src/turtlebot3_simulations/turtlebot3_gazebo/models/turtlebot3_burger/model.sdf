@@ -46,6 +46,8 @@
 
     <link name="imu_link">
       <sensor name="tb3_imu" type="imu">
+        <topic>imu</topic>
+        <gz_frame_id>imu_link</gz_frame_id>
         <always_on>true</always_on>
         <update_rate>200</update_rate>
         <imu>
@@ -424,8 +426,9 @@
       <wheel_radius>0.033</wheel_radius>
       <odom_publish_frequency>30</odom_publish_frequency>
       <topic>cmd_vel</topic>
-      <odom_topic>odom</odom_topic>
-      <tf_topic>tf</tf_topic>
+      <odom_topic>wheel/odom</odom_topic>
+      <!-- The EKF alone supplies navigation TF to ROS. -->
+      <tf_topic>wheel/tf</tf_topic>
       <frame_id>odom</frame_id>
       <child_frame_id>base_footprint</child_frame_id>
     </plugin>

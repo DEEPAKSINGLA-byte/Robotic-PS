@@ -49,11 +49,16 @@ def generate_launch_description():
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
-            '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-            '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
-            '/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model',
-            '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
+            '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+            *(
+                ['/wheel/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                 '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU']
+                if TURTLEBOT3_MODEL == 'burger' else
+                ['/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                 '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V']
+            ),
+            '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
             '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
@@ -72,5 +77,39 @@ def generate_launch_description():
     # Add any conditioned actions
     ld.add_action(start_gazebo_ros_spawner_cmd)
     ld.add_action(bridge_node)
+
+    # Use one odometry/TF source, corrected by the IMU during turns.
+    # Wheel yaw rate is a fallback for worlds without IMU generation.
+    if TURTLEBOT3_MODEL == 'burger':
+        ld.add_action(Node(
+            package='robot_localization', executable='ekf_node',
+            name='ekf_filter_node', output='screen',
+            parameters=[{
+                'use_sim_time': True,
+                'frequency': 30.0,
+                'two_d_mode': True,
+                'publish_tf': True,
+                'map_frame': 'map',
+                'odom_frame': 'odom',
+                'base_link_frame': 'base_footprint',
+                'world_frame': 'odom',
+                'odom0': 'wheel/odom',
+                'odom0_config': [False, False, False,
+                                 False, False, False,
+                                 True, True, False,
+                                 False, False, True,
+                                 False, False, False],
+                'odom0_queue_size': 10,
+                'imu0': 'imu',
+                'imu0_config': [False, False, False,
+                                False, False, True,
+                                False, False, False,
+                                False, False, True,
+                                False, False, False],
+                'imu0_relative': True,
+                'imu0_queue_size': 10,
+            }],
+            remappings=[('odometry/filtered', 'odom')],
+        ))
 
     return ld
