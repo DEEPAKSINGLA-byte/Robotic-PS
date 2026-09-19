@@ -19,7 +19,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <algorithm>
-
+#include <queue>
+#include <unordered_map>
+#include <tuple>
 struct VehicleParams {
     double length = 4.0;
     double width = 1.8;
@@ -35,6 +37,39 @@ struct Pose2D {
     double yaw = 0.0;
     double v = 0.0;
     double delta = 0.0;
+};
+
+enum Direction { FORWARD = 0, REVERSE = 1 };
+
+struct StateKey {
+    int x_bin;
+    int y_bin;
+    int yaw_bin;
+    Direction dir;
+
+    bool operator==(const StateKey& other) const {
+        return x_bin == other.x_bin && y_bin == other.y_bin && yaw_bin == other.yaw_bin && dir == other.dir;
+    }
+};
+
+struct StateKeyHash {
+    std::size_t operator()(const StateKey& k) const {
+        std::size_t h1 = std::hash<int>()(k.x_bin);
+        std::size_t h2 = std::hash<int>()(k.y_bin);
+        std::size_t h3 = std::hash<int>()(k.yaw_bin);
+        std::size_t h4 = std::hash<int>()(k.dir);
+        return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
+    }
+};
+
+struct AStarNode {
+    Pose2D state;
+    double g_cost;
+    double h_cost;
+    int parent_index;
+    double v_used;
+    double delta_used;
+    Direction dir;
 };
 
 class CandidateSolver {
@@ -152,20 +187,167 @@ public:
         };
 
         // --------------------------------------------------------------------
-        // TODO: IMPLEMENT YOUR PATH PLANNING / TRAJECTORY GENERATION ALGORITHM
+        // HYBRID A* IMPLEMENTATION
         // --------------------------------------------------------------------
+        
+        auto getYawDiff = [](double yaw1, double yaw2) -> double {
+            double diff = yaw1 - yaw2;
+            while(diff > M_PI) diff -= 2.0 * M_PI;
+            while(diff < -M_PI) diff += 2.0 * M_PI;
+            return std::abs(diff);
+        };
 
-        // Placeholder trajectory
-        int num_pts = 50;
-        for (int i = 0; i <= num_pts; ++i) {
-            double ratio = static_cast<double>(i) / num_pts;
-            Pose2D p;
-            p.x = start.x + ratio * (goal.x - start.x);
-            p.y = start.y + ratio * (goal.y - start.y);
-            p.yaw = start.yaw + ratio * (goal.yaw - start.yaw);
-            p.v = 0.5;
-            p.delta = 0.0;
-            path.push_back(p);
+        auto getKey = [](const Pose2D& state, Direction dir) -> StateKey {
+            StateKey k;
+            k.x_bin = static_cast<int>(std::floor(state.x / 0.5));
+            k.y_bin = static_cast<int>(std::floor(state.y / 0.5));
+            double yaw_norm = state.yaw;
+            while(yaw_norm < 0) yaw_norm += 2.0 * M_PI;
+            while(yaw_norm >= 2.0 * M_PI) yaw_norm -= 2.0 * M_PI;
+            k.yaw_bin = static_cast<int>(std::floor(yaw_norm / (15.0 * M_PI / 180.0)));
+            k.dir = dir;
+            return k;
+        };
+
+        auto getHeuristic = [&](const Pose2D& state) -> double {
+            double dist = std::hypot(goal.x - state.x, goal.y - state.y);
+            double heading_err = getYawDiff(state.yaw, goal.yaw);
+            return dist + 0.1 * heading_err;
+        };
+        
+        auto isGoal = [&](const Pose2D& state) -> bool {
+            double dist = std::hypot(goal.x - state.x, goal.y - state.y);
+            double heading_err = getYawDiff(state.yaw, goal.yaw);
+            return (dist < 0.40 && heading_err < 0.30);
+        };
+
+        std::vector<AStarNode> all_nodes;
+        std::unordered_map<StateKey, double, StateKeyHash> closed_set;
+        
+        auto cmp = [&](int a, int b) {
+            double fa = all_nodes[a].g_cost + all_nodes[a].h_cost;
+            double fb = all_nodes[b].g_cost + all_nodes[b].h_cost;
+            return fa > fb; // smallest f first
+        };
+        std::priority_queue<int, std::vector<int>, decltype(cmp)> open_set(cmp);
+
+        // Constants for penalty weights
+        const double W_DIST = 1.0;
+        const double W_REVERSE = 2.0;
+        const double W_SWITCH = 10.0;
+        const double W_STEER_CHANGE = 0.5;
+
+        // Initialize Start Node
+        AStarNode start_node;
+        start_node.state = start;
+        start_node.g_cost = 0.0;
+        start_node.h_cost = getHeuristic(start);
+        start_node.parent_index = -1;
+        start_node.v_used = 0.0;
+        start_node.delta_used = 0.0;
+        start_node.dir = FORWARD;
+        
+        all_nodes.push_back(start_node);
+        open_set.push(0);
+        closed_set[getKey(start, FORWARD)] = 0.0;
+        
+        // Define motion primitives parameters
+        double sim_dt = 0.1;
+        int sim_steps = 5;
+        double steering_vals[5] = {
+            -params.max_steer,
+            -0.5 * params.max_steer,
+            0.0,
+            0.5 * params.max_steer,
+            params.max_steer
+        };
+        double speeds[2] = { params.max_speed, params.min_speed };
+        Direction dirs[2] = { FORWARD, REVERSE };
+
+        int goal_node_idx = -1;
+        int expanded_nodes = 0;
+        
+        while (!open_set.empty()) {
+            int curr_idx = open_set.top();
+            open_set.pop();
+            const AStarNode& curr_node = all_nodes[curr_idx];
+            
+            expanded_nodes++;
+            if (expanded_nodes % 5000 == 0) {
+                std::cout << "[Candidate Template] Expanded " << expanded_nodes << " nodes..." << std::endl;
+            }
+
+            if (isGoal(curr_node.state)) {
+                goal_node_idx = curr_idx;
+                break;
+            }
+            
+            for (int d = 0; d < 2; ++d) {
+                double v = speeds[d];
+                Direction next_dir = dirs[d];
+                
+                for (int s = 0; s < 5; ++s) {
+                    double delta = steering_vals[s];
+                    
+                    // Simulate motion primitive
+                    Pose2D sim_state = curr_node.state;
+                    bool collision = false;
+                    double dist_travelled = 0.0;
+                    
+                    for (int step = 0; step < sim_steps; ++step) {
+                        Pose2D next_state = stepVehicle(sim_state, v, delta, sim_dt);
+                        if (isStateCollision(next_state)) {
+                            collision = true;
+                            break;
+                        }
+                        dist_travelled += std::hypot(next_state.x - sim_state.x, next_state.y - sim_state.y);
+                        sim_state = next_state;
+                    }
+                    
+                    if (collision) continue;
+                    
+                    // Calculate costs
+                    double g_new = curr_node.g_cost + (dist_travelled * W_DIST);
+                    if (next_dir == REVERSE) g_new += (dist_travelled * W_REVERSE);
+                    if (next_dir != curr_node.dir) g_new += W_SWITCH;
+                    g_new += std::abs(delta - curr_node.delta_used) * W_STEER_CHANGE;
+                    
+                    StateKey key = getKey(sim_state, next_dir);
+                    
+                    auto it = closed_set.find(key);
+                    if (it == closed_set.end() || g_new < it->second) {
+                        closed_set[key] = g_new;
+                        
+                        AStarNode next_node;
+                        next_node.state = sim_state;
+                        next_node.g_cost = g_new;
+                        next_node.h_cost = getHeuristic(sim_state);
+                        next_node.parent_index = curr_idx;
+                        next_node.v_used = v;
+                        next_node.delta_used = delta;
+                        next_node.dir = next_dir;
+                        
+                        // Pass along the applied motion controls safely to state 
+                        next_node.state.v = v;
+                        next_node.state.delta = delta;
+                        
+                        all_nodes.push_back(next_node);
+                        open_set.push(all_nodes.size() - 1);
+                    }
+                }
+            }
+        }
+        
+        if (goal_node_idx != -1) {
+            std::cout << "[Candidate Template] Path found! Nodes expanded: " << expanded_nodes << std::endl;
+            int curr = goal_node_idx;
+            while(curr != -1) {
+                path.push_back(all_nodes[curr].state);
+                curr = all_nodes[curr].parent_index;
+            }
+            std::reverse(path.begin(), path.end());
+        } else {
+            std::cout << "[Candidate Template] Hybrid A* failed to find a path! Expanded: " << expanded_nodes << std::endl;
         }
 
         return path;
