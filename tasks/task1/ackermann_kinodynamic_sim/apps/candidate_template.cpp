@@ -14,7 +14,7 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
-#include <thread>
+#include <future>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -70,6 +70,23 @@ struct Pose2D {
 
 enum Direction { FORWARD = 0, REVERSE = 1 };
 
+bool goalRegionHasFreeCell(const std::vector<uint8_t>& grid, int cols, int rows,
+                           double res, double ox, double oy,
+                           double x, double y, double radius) {
+    int cx = static_cast<int>(std::floor((x-ox)/res));
+    int cy = static_cast<int>(std::floor((y-oy)/res));
+    int extent = static_cast<int>(std::ceil(radius/res)) + 1;
+    for (int gy = cy-extent; gy <= cy+extent; ++gy) {
+        for (int gx = cx-extent; gx <= cx+extent; ++gx) {
+            if (gx < 0 || gy < 0 || gx >= cols || gy >= rows || grid[gy*cols+gx]) continue;
+            double px = std::clamp(x, ox+gx*res, ox+(gx+1)*res);
+            double py = std::clamp(y, oy+gy*res, oy+(gy+1)*res);
+            if (std::hypot(px-x, py-y) < radius) return true;
+        }
+    }
+    return false;
+}
+
 struct StateKey {
     int x_bin;
     int y_bin;
@@ -118,7 +135,9 @@ public:
     std::vector<Pose2D> solve(const Pose2D& start, const Pose2D& goal, 
                               const std::vector<uint8_t>& grid, int cols, int rows, double res,
                               double orig_x, double orig_y,
-                              const VehicleParams& params) {
+                              const VehicleParams& params,
+                              double goal_position_tolerance = 0.40,
+                              bool require_goal_yaw = true) {
         std::cout << "[Candidate Template] Running solver..." << std::endl;
         std::vector<Pose2D> path;
 
@@ -135,6 +154,13 @@ public:
             if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true; // Treat outside map as obstacle
             return grid[gy * cols + gx] != 0;
         };
+
+        if (!goalRegionHasFreeCell(grid, cols, rows, res, orig_x, orig_y,
+                                   goal.x, goal.y, goal_position_tolerance)) {
+            std::cerr << "[Planner] Goal region is entirely occupied at ("
+                      << goal.x << ", " << goal.y << ")." << std::endl;
+            return {};
+        }
 
         // 3. Vehicle Kinematic Propagation
         auto stepVehicle = [&](const Pose2D& state, double v, double delta, double dt) -> Pose2D {
@@ -160,10 +186,11 @@ public:
 
         // 4. Collision checking for a full state
         auto isStateCollision = [&](const Pose2D& state) -> bool {
-            double x_rear = -0.8;
-            double x_front = params.wheelbase + 0.7;
-            double y_left = params.width / 2.0;
-            double y_right = -params.width / 2.0;
+            const double margin = res;
+            double x_rear = -0.8 - margin;
+            double x_front = params.wheelbase + 0.7 + margin;
+            double y_left = params.width / 2.0 + margin;
+            double y_right = -params.width / 2.0 - margin;
 
             std::vector<std::pair<double, double>> local_points;
             
@@ -242,14 +269,15 @@ public:
 
         auto getHeuristic = [&](const Pose2D& state) -> double {
             double dist = std::hypot(goal.x - state.x, goal.y - state.y);
-            double heading_err = getYawDiff(state.yaw, goal.yaw);
+            double heading_err = require_goal_yaw ? getYawDiff(state.yaw, goal.yaw) : 0.0;
             return dist + 0.1 * heading_err;
         };
         
         auto isGoal = [&](const Pose2D& state) -> bool {
             double dist = std::hypot(goal.x - state.x, goal.y - state.y);
             double heading_err = getYawDiff(state.yaw, goal.yaw);
-            return (dist < 0.40 && heading_err < 0.30);
+            return dist < goal_position_tolerance &&
+                   (!require_goal_yaw || heading_err < 0.30);
         };
 
         std::vector<AStarNode> all_nodes;
@@ -305,6 +333,10 @@ public:
             const AStarNode curr_node = all_nodes[curr_idx];
             
             expanded_nodes++;
+            if (expanded_nodes > 250000) {
+                std::cerr << "[Planner] Search limit reached; stopping safely." << std::endl;
+                return {};
+            }
             if (expanded_nodes % 5000 == 0) {
                 std::cout << "[Candidate Template] Expanded " << expanded_nodes << " nodes..." << std::endl;
             }
@@ -434,13 +466,14 @@ int main(int argc, char** argv) {
     double map_w = 0, map_h = 0, res = 0, orig_x = 0, orig_y = 0;
     int cols = 0, rows = 0;
     std::vector<uint8_t> grid;
+    std::vector<Pose2D> waypoints;
 
     std::string pending;
     std::string line;
-    bool got_config = false, got_grid = false;
-    while (!got_config || !got_grid) {
+    bool got_config = false, got_waypoints = false, got_grid = false;
+    while (!got_config || !got_waypoints || !got_grid) {
         if (!readLine(sock, pending, line)) {
-            std::cerr << "[Client] Disconnected before complete CONFIG/GRID." << std::endl;
+            std::cerr << "[Client] Disconnected before complete CONFIG/WAYPOINTS/GRID." << std::endl;
             close(sock); return 1;
         }
         if (line.rfind("CONFIG ", 0) == 0) {
@@ -456,6 +489,30 @@ int main(int argc, char** argv) {
                 close(sock); return 1;
             }
             got_config = true;
+        }
+        else if (line.rfind("WAYPOINTS ", 0) == 0) {
+            std::istringstream line_ss(line.substr(10));
+            size_t count = 0;
+            if (!(line_ss >> count)) {
+                std::cerr << "[Client] Invalid WAYPOINTS header." << std::endl;
+                close(sock); return 1;
+            }
+            waypoints.clear();
+            waypoints.reserve(count);
+            for (size_t i = 0; i < count; ++i) {
+                Pose2D waypoint;
+                if (!(line_ss >> waypoint.x >> waypoint.y)) {
+                    std::cerr << "[Client] Incomplete WAYPOINTS message." << std::endl;
+                    close(sock); return 1;
+                }
+                waypoints.push_back(waypoint);
+            }
+            std::string extra;
+            if (line_ss >> extra) {
+                std::cerr << "[Client] Unexpected data in WAYPOINTS message." << std::endl;
+                close(sock); return 1;
+            }
+            got_waypoints = true;
         }
         else if (line.rfind("GRID ", 0) == 0) {
             std::istringstream line_ss(line.substr(5));
@@ -477,18 +534,54 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "[Client] Config loaded. Map: " << cols << "x" << rows << " resolution: " << res << "m" << std::endl;
+    std::cout << "[Client] Navigation targets: "
+              << (waypoints.empty() ? 1 : waypoints.size()) << std::endl;
 
     CandidateSolver solver;
-    auto path = solver.solve(start, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
+    std::vector<Pose2D> navigation_goals = waypoints;
+    if (navigation_goals.empty()) {
+        navigation_goals.push_back(goal);
+    } else if (std::hypot(navigation_goals.back().x-goal.x,
+                          navigation_goals.back().y-goal.y) < 1e-6) {
+        navigation_goals.back() = goal;
+    } else {
+        navigation_goals.push_back(goal);
+    }
+    size_t active_goal_idx = 0;
+    constexpr double INTERMEDIATE_GOAL_TOLERANCE = 0.80;
+
+    auto isFinalGoal = [&]() {
+        return active_goal_idx + 1 == navigation_goals.size();
+    };
+    auto planToActiveGoal = [&](const Pose2D& plan_start) {
+        const Pose2D plan_goal = navigation_goals[active_goal_idx];
+        const bool final = isFinalGoal();
+        return std::async(std::launch::async, [&, plan_start, plan_goal, final]() {
+            return solver.solve(plan_start, plan_goal,
+                            grid, cols, rows, res, orig_x, orig_y, v_params,
+                            final ? 0.40 : INTERMEDIATE_GOAL_TOLERANCE, final);
+        });
+    };
+
+    std::vector<Pose2D> path;
+    std::future<std::vector<Pose2D>> planning;
+    enum class Mode { STOPPING, PLANNING, TRACKING, WAIT_SKIP };
+    Mode mode = Mode::STOPPING;
+    size_t skipped_waypoints = 0;
+    if (!sendMessage(sock, "CTRL 0 0\n")) { close(sock); return 1; }
     auto uploadPath = [&]() {
         std::ostringstream msg;
         msg << "TRAJ ";
         for (const auto& p : path) msg << p.x << ' ' << p.y << ' ' << p.yaw << ' ' << p.v << ';';
         msg << '\n';
+        std::cout << "[Client] Uploading " << path.size() << " trajectory samples; endpoint=("
+                  << path.back().x << ", " << path.back().y << ")." << std::endl;
         return sendMessage(sock, msg.str());
     };
-    if (!uploadPath()) { close(sock); return 1; }
-    auto computeControl = [&](const Pose2D& current, const std::vector<Pose2D>& path, size_t& nearest_idx, double& out_e_y, double& out_e_theta) -> std::pair<double, double> {
+    auto computeControl = [&](const Pose2D& current, const Pose2D& active_goal,
+                              bool final_goal, const std::vector<Pose2D>& path,
+                              size_t& nearest_idx, double& out_e_y,
+                              double& out_e_theta) -> std::pair<double, double> {
         if (path.empty()) {
             out_e_y = 0.0;
             out_e_theta = 0.0;
@@ -574,8 +667,9 @@ int main(int argc, char** argv) {
         if (lookahead_idx == path.size() - 1 && min_dist < 2.0) {
             target_v *= 0.5; // Slow down near goal
         }
-        if (std::hypot(current.x-goal.x, current.y-goal.y) < 0.40 &&
-            std::abs(getYawDiffSigned(goal.yaw, current.yaw)) < 0.30) {
+        if (final_goal &&
+            std::hypot(current.x-active_goal.x, current.y-active_goal.y) < 0.40 &&
+            std::abs(getYawDiffSigned(active_goal.yaw, current.yaw)) < 0.30) {
             target_v = 0;
             delta = 0;
         }
@@ -593,9 +687,31 @@ int main(int argc, char** argv) {
     double last_replan_time = -10000.0;
     const double REPLAN_COOLDOWN_MS = 2000.0; // 2 seconds
     bool reached_goal = false;
+    size_t replan_count = 0;
+    double max_cte = 0.0;
+    double first_telemetry_ms = -1.0;
 
     while (true) {
         if (!readLine(sock, pending, line)) break;
+        if (line.rfind("WAYPOINT_SKIPPED ", 0) == 0) {
+            std::istringstream reply(line.substr(17));
+            size_t index = 0;
+            if (mode != Mode::WAIT_SKIP || !(reply >> index) || index != active_goal_idx+1) {
+                std::cerr << "[Client] Unexpected skip acknowledgement; stopping." << std::endl;
+                break;
+            }
+            ++skipped_waypoints;
+            ++active_goal_idx;
+            std::cout << "[Client] Waypoint " << index
+                      << " SKIPPED (blocked acceptance area, not reached). Continuing to target "
+                      << active_goal_idx+1 << "." << std::endl;
+            mode = Mode::STOPPING;
+            continue;
+        }
+        if (line.rfind("WAYPOINT_SKIP_REJECTED ", 0) == 0) {
+            std::cerr << "[Client] Simulator rejected waypoint cancellation; stopping." << std::endl;
+            break;
+        }
         if (line.rfind("TELEMETRY ", 0) == 0) {
             std::istringstream t_ss(line);
             std::string tag;
@@ -605,10 +721,16 @@ int main(int argc, char** argv) {
             t_ss >> tag >> step >> t_ms >> cur_x >> cur_y >> cur_yaw >> cur_v >> cur_delta >> coll >> goal_done;
             if (!t_ss) { std::cerr << "[Client] Invalid telemetry." << std::endl; break; }
             if (coll) { std::cout << "[Client] Collision detected!" << std::endl; break; }
-            if (goal_done) { reached_goal = true; std::cout << "[Client] Goal reached!" << std::endl; break; }
-
-            if (path.empty()) {
-                std::cout << "[Client] No path to follow!" << std::endl;
+            if (first_telemetry_ms < 0) first_telemetry_ms = t_ms;
+            if (goal_done) {
+                reached_goal = true;
+                std::cout << "[Client] Goal reached! Skipped waypoints=" << skipped_waypoints
+                          << "; final position error=" << std::hypot(cur_x-goal.x, cur_y-goal.y)
+                          << "m; yaw error=" << std::abs(std::atan2(std::sin(cur_yaw-goal.yaw),
+                                                                     std::cos(cur_yaw-goal.yaw)))
+                          << "rad; speed=" << cur_v << "m/s; elapsed="
+                          << (t_ms-first_telemetry_ms)/1000.0 << "s; replans=" << replan_count
+                          << "; max CTE=" << max_cte << "m." << std::endl;
                 break;
             }
 
@@ -618,10 +740,64 @@ int main(int argc, char** argv) {
             current_state.yaw = cur_yaw;
             current_state.v = cur_v;
             current_state.delta = cur_delta;
+
+            if (mode == Mode::WAIT_SKIP) {
+                if (!sendMessage(sock, "CTRL 0 0\n")) break;
+                continue;
+            }
+            if (mode == Mode::STOPPING) {
+                if (!sendMessage(sock, "CTRL 0 0\n")) break;
+                if (std::abs(cur_v) < 0.01 && std::abs(cur_delta) < 0.01) {
+                    const auto& target = navigation_goals[active_goal_idx];
+                    if (!isFinalGoal() && !goalRegionHasFreeCell(grid, cols, rows, res,
+                            orig_x, orig_y, target.x, target.y, 1.2)) {
+                        std::cout << "[Client] Target " << active_goal_idx+1
+                                  << " acceptance area is blocked; requesting cancellation." << std::endl;
+                        if (!sendMessage(sock, "SKIP_WAYPOINT " +
+                                              std::to_string(active_goal_idx+1) + "\n")) break;
+                        mode = Mode::WAIT_SKIP;
+                        continue;
+                    }
+                    planning = planToActiveGoal(current_state);
+                    mode = Mode::PLANNING;
+                }
+                continue;
+            }
+            if (mode == Mode::PLANNING) {
+                if (!sendMessage(sock, "CTRL 0 0\n")) break;
+                if (planning.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                    continue;
+                path = planning.get();
+                if (path.empty()) {
+                    std::cerr << "[Client] No safe path to target " << active_goal_idx+1
+                              << "; vehicle remains stopped." << std::endl;
+                    break;
+                }
+                target_idx = 0;
+                if (!uploadPath()) break;
+                mode = Mode::TRACKING;
+            }
+
+            const Pose2D& active_goal = navigation_goals[active_goal_idx];
+            if (!isFinalGoal() &&
+                std::hypot(cur_x - active_goal.x, cur_y - active_goal.y) <
+                    INTERMEDIATE_GOAL_TOLERANCE) {
+                if (!sendMessage(sock, "CTRL 0 0\n")) break;
+                ++active_goal_idx;
+                std::cout << "[Client] Intermediate waypoint " << active_goal_idx
+                          << " reached. Planning target " << (active_goal_idx + 1)
+                          << "/" << navigation_goals.size() << "." << std::endl;
+                mode = Mode::STOPPING;
+                continue;
+            }
             
             double cur_e_y = 0.0;
             double cur_e_theta = 0.0;
-            auto [target_v, target_delta] = computeControl(current_state, path, target_idx, cur_e_y, cur_e_theta);
+            auto [target_v, target_delta] =
+                computeControl(current_state, navigation_goals[active_goal_idx],
+                               isFinalGoal(), path, target_idx,
+                               cur_e_y, cur_e_theta);
+            max_cte = std::max(max_cte, std::abs(cur_e_y));
             // Replanning check
             if ((std::abs(cur_e_y) > REPLAN_CTE_THRESHOLD || std::abs(cur_e_theta) > REPLAN_YAW_THRESHOLD) 
                 && (t_ms - last_replan_time > REPLAN_COOLDOWN_MS)) {
@@ -629,20 +805,10 @@ int main(int argc, char** argv) {
                 std::cout << "[Client] Tracking error too large (e_y=" << cur_e_y << ", e_th=" << cur_e_theta << "). Replanning!" << std::endl;
                 if (!sendMessage(sock, "CTRL 0 0\n")) break;
                 
-                path = solver.solve(current_state, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
-                if (!uploadPath()) break;
-                target_idx = 0;
                 last_replan_time = t_ms;
-                
-                if (path.empty()) {
-                    std::cout << "[Client] Replan failed!" << std::endl;
-                    break;
-                }
-                
-                // Re-evaluate control for the new path immediately
-                auto cmds = computeControl(current_state, path, target_idx, cur_e_y, cur_e_theta);
-                target_v = cmds.first;
-                target_delta = cmds.second;
+                ++replan_count;
+                mode = Mode::STOPPING;
+                continue;
             }
 
             std::ostringstream cmd_ss;
@@ -650,7 +816,6 @@ int main(int argc, char** argv) {
             std::string cmd_str = cmd_ss.str();
             if (!sendMessage(sock, cmd_str)) break;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     sendMessage(sock, "CTRL 0 0\n");
