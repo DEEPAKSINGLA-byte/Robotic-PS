@@ -214,8 +214,28 @@ public:
      * - Return true if a valid frame was read, false otherwise.
      */
     bool readEncoderFeedback(MotorState& state) {
-        // CANDIDATE IMPLEMENTATION HERE
-        return false;
+        if (m_can_fd < 0) return false;
+
+        struct can_frame frame;
+        ssize_t nbytes = read(m_can_fd, &frame, sizeof(struct can_frame));
+        
+        if (nbytes != sizeof(struct can_frame)) {
+            return false; // No data available or read error
+        }
+
+        if (frame.can_dlc < 8) {
+            return false; // Incomplete payload
+        }
+
+        uint8_t expected_checksum = computeCanChecksum(frame.data);
+        if (frame.data[7] != expected_checksum) {
+            return false; // Checksum mismatch
+        }
+
+        state.motor_id = frame.data[0];
+        std::memcpy(&state.position, &frame.data[1], sizeof(float));
+
+        return true;
     }
 
     /**
