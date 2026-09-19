@@ -4,6 +4,8 @@ This repository contains a C++ simulator designed to test motion planning and co
 
 The simulator models vehicle dynamics in a $100\text{m} \times 100\text{m}$ grid environment and provides real-time state telemetry and occupancy maps over a TCP socket interface.
 
+**Demo Video:** [https://youtu.be/oAvbw1vUkfA](https://youtu.be/oAvbw1vUkfA)
+
 ---
 
 ## Task Overview
