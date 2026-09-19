@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <algorithm>
 
 struct VehicleParams {
     double length = 4.0;
@@ -52,9 +53,103 @@ public:
      */
     std::vector<Pose2D> solve(const Pose2D& start, const Pose2D& goal, 
                               const std::vector<uint8_t>& grid, int cols, int rows, double res,
+                              double orig_x, double orig_y,
                               const VehicleParams& params) {
         std::cout << "[Candidate Template] Running solver..." << std::endl;
         std::vector<Pose2D> path;
+
+        // 1. Convert a world (x,y) into grid (gx,gy)
+        auto worldToGrid = [&](double wx, double wy, int& gx, int& gy) {
+            gx = static_cast<int>(std::floor((wx - orig_x) / res));
+            gy = static_cast<int>(std::floor((wy - orig_y) / res));
+        };
+
+        // 2. Check whether that grid cell is an obstacle
+        auto isObstacle = [&](double wx, double wy) -> bool {
+            int gx, gy;
+            worldToGrid(wx, wy, gx, gy);
+            if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true; // Treat outside map as obstacle
+            return grid[gy * cols + gx] != 0;
+        };
+
+        // 3. Vehicle Kinematic Propagation
+        auto stepVehicle = [&](const Pose2D& state, double v, double delta, double dt) -> Pose2D {
+            Pose2D next = state;
+            // Respect vehicle speed and steering limits
+            double cmd_v = std::max(params.min_speed, std::min(params.max_speed, v));
+            double cmd_delta = std::max(-params.max_steer, std::min(params.max_steer, delta));
+            
+            // Apply Ackermann kinematics
+            next.x += cmd_v * std::cos(state.yaw) * dt;
+            next.y += cmd_v * std::sin(state.yaw) * dt;
+            next.yaw += (cmd_v / params.wheelbase) * std::tan(cmd_delta) * dt;
+            
+            // Normalize yaw to [-pi, pi]
+            next.yaw = std::atan2(std::sin(next.yaw), std::cos(next.yaw));
+            
+            next.v = cmd_v;
+            next.delta = cmd_delta;
+            return next;
+        };
+
+        // 4. Collision checking for a full state
+        auto isStateCollision = [&](const Pose2D& state) -> bool {
+            double x_rear = -0.8;
+            double x_front = params.wheelbase + 0.7;
+            double y_left = params.width / 2.0;
+            double y_right = -params.width / 2.0;
+
+            std::vector<std::pair<double, double>> local_points;
+            
+            // Vehicle center
+            local_points.push_back({(x_front + x_rear) / 2.0, 0.0});
+            
+            double spacing = res / 2.0;
+
+            // Top and bottom edges
+            for (double x = x_rear; x <= x_front; x += spacing) {
+                local_points.push_back({x, y_left});
+                local_points.push_back({x, y_right});
+            }
+            // Ensure exact corners are checked
+            local_points.push_back({x_front, y_left});
+            local_points.push_back({x_front, y_right});
+            local_points.push_back({x_rear, y_left});
+            local_points.push_back({x_rear, y_right});
+
+            // Left and right edges (front and rear bumpers)
+            for (double y = y_right; y <= y_left; y += spacing) {
+                local_points.push_back({x_front, y});
+                local_points.push_back({x_rear, y});
+            }
+
+            double cos_yaw = std::cos(state.yaw);
+            double sin_yaw = std::sin(state.yaw);
+
+            for (const auto& p : local_points) {
+                double xl = p.first;
+                double yl = p.second;
+                double xw = state.x + xl * cos_yaw - yl * sin_yaw;
+                double yw = state.y + xl * sin_yaw + yl * cos_yaw;
+
+                if (isObstacle(xw, yw)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // 5. Check if a motion is collision free
+        auto isMotionCollisionFree = [&](const Pose2D& state, double v, double delta, double dt, int num_steps) -> bool {
+            Pose2D curr = state;
+            for (int i = 0; i < num_steps; ++i) {
+                curr = stepVehicle(curr, v, delta, dt);
+                if (isStateCollision(curr)) {
+                    return false;
+                }
+            }
+            return true;
+        };
 
         // --------------------------------------------------------------------
         // TODO: IMPLEMENT YOUR PATH PLANNING / TRAJECTORY GENERATION ALGORITHM
@@ -142,7 +237,7 @@ int main(int argc, char** argv) {
     std::cout << "[Client] Config loaded. Map: " << cols << "x" << rows << " resolution: " << res << "m" << std::endl;
 
     CandidateSolver solver;
-    auto path = solver.solve(start, goal, grid, cols, rows, res, v_params);
+    auto path = solver.solve(start, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
 
     size_t target_idx = 0;
     while (true) {
