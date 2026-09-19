@@ -187,8 +187,23 @@ public:
      * - Write non-blocking frame using write(m_can_fd, &frame, sizeof(frame)).
      */
     bool sendMotorVelocity(uint8_t motor_id, float target_velocity) {
-        // CANDIDATE IMPLEMENTATION HERE
-        return false;
+        if (m_can_fd < 0) return false;
+
+        struct can_frame frame;
+        std::memset(&frame, 0, sizeof(frame));
+        
+        frame.can_id = 0x100 + motor_id;
+        frame.can_dlc = 8;
+        
+        frame.data[0] = motor_id;
+        std::memcpy(&frame.data[1], &target_velocity, sizeof(float));
+        frame.data[5] = 0x00;
+        frame.data[6] = 0x00;
+        
+        frame.data[7] = computeCanChecksum(frame.data);
+
+        ssize_t nbytes = write(m_can_fd, &frame, sizeof(struct can_frame));
+        return (nbytes == sizeof(struct can_frame));
     }
 
     /**
