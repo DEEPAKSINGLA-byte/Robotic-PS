@@ -471,7 +471,7 @@ int main(int argc, char** argv) {
         double e_theta = getYawDiffSigned(target.yaw, current.yaw);
 
         // 7. Handle forward versus reverse
-        bool is_reverse = (target.v < 0);
+        bool is_reverse = (path[nearest_idx].v < 0);
         if (is_reverse) {
             e_y = -e_y;
             e_theta = getYawDiffSigned(current.yaw, target.yaw);
@@ -486,12 +486,27 @@ int main(int argc, char** argv) {
         // 8. Slow down during difficult tracking
         double target_v = is_reverse ? v_params.min_speed : v_params.max_speed;
         
-        if (std::abs(delta) > 0.4 || std::abs(e_y) > 1.0) {
-            target_v *= 0.5;
+        // Scan ahead for gear changes
+        bool gear_change_upcoming = false;
+        size_t scan_idx = nearest_idx;
+        double scan_dist = 0.0;
+        while (scan_idx < path.size() - 1 && scan_dist < 1.5) {
+            scan_dist += std::hypot(path[scan_idx+1].x - path[scan_idx].x, path[scan_idx+1].y - path[scan_idx].y);
+            if ((path[scan_idx].v < 0) != is_reverse) {
+                gear_change_upcoming = true;
+                break;
+            }
+            scan_idx++;
+        }
+
+        if (gear_change_upcoming) {
+            target_v *= 0.25; // Reduce speed significantly near direction change
+        } else if (std::abs(delta) > 0.4 || std::abs(e_y) > 1.0) {
+            target_v *= 0.5; // Slow down for tight turns or large errors
         }
 
         if (lookahead_idx == path.size() - 1 && min_dist < 2.0) {
-            target_v *= 0.5;
+            target_v *= 0.5; // Slow down near goal
         }
         
         out_e_y = e_y;
