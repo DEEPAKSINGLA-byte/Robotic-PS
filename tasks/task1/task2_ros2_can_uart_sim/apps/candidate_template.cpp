@@ -60,11 +60,52 @@ public:
 
         // --------------------------------------------------------------------
         // TODO 1: Initialize SocketCAN (PF_CAN, SOCK_RAW, CAN_RAW) on m_can_if.
-        // - Create socket using socket(PF_CAN, SOCK_RAW, CAN_RAW).
-        // - Set socket flags to NON-BLOCKING mode (O_NONBLOCK).
-        // - Retrieve interface index using ioctl(SIOCGIFINDEX) for m_can_if.
-        // - Bind socket using bind().
         // --------------------------------------------------------------------
+        m_can_fd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+
+        if (m_can_fd < 0) {
+            std::cerr << "[CAN] Failed to create SocketCAN socket." << std::endl;
+            return false;
+        }
+
+        // Set socket to non-blocking mode
+        int flags = fcntl(m_can_fd, F_GETFL, 0);
+        if (flags < 0 || fcntl(m_can_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+            std::cerr << "[CAN] Failed to set non-blocking mode." << std::endl;
+            close(m_can_fd);
+            m_can_fd = -1;
+            return false;
+        }
+
+        // Get interface index for vcan0
+        struct ifreq ifr{};
+        std::strncpy(ifr.ifr_name, m_can_if.c_str(), IFNAMSIZ - 1);
+
+        if (ioctl(m_can_fd, SIOCGIFINDEX, &ifr) < 0) {
+            std::cerr << "[CAN] Failed to get interface index for "
+                      << m_can_if << std::endl;
+            close(m_can_fd);
+            m_can_fd = -1;
+            return false;
+        }
+
+        // Bind the socket to the CAN interface
+        struct sockaddr_can addr{};
+        addr.can_family = AF_CAN;
+        addr.can_ifindex = ifr.ifr_ifindex;
+
+        if (bind(m_can_fd,
+                 reinterpret_cast<struct sockaddr*>(&addr),
+                 sizeof(addr)) < 0) {
+            std::cerr << "[CAN] Failed to bind to "
+                      << m_can_if << std::endl;
+            close(m_can_fd);
+            m_can_fd = -1;
+            return false;
+        }
+
+        std::cout << "[CAN] Socket bound to " << m_can_if
+                  << " (non-blocking)." << std::endl;
 
         // --------------------------------------------------------------------
         // TODO 2: Initialize POSIX Serial Port (m_serial_port) with termios.h.
