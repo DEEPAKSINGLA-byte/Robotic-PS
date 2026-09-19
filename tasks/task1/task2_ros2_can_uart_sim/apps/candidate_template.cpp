@@ -249,8 +249,117 @@ public:
      * - Return true if a valid sentence was parsed, false otherwise.
      */
     bool readImuTelemetry(ImuData& imu) {
-        // CANDIDATE IMPLEMENTATION HERE
-        return false;
+        if (m_serial_fd < 0) {
+            return false;
+        }
+
+        char chunk[256];
+
+        ssize_t bytes_read =
+            read(m_serial_fd, chunk, sizeof(chunk));
+
+        // No new UART data
+        if (bytes_read <= 0) {
+            return false;
+        }
+
+        // Add newly received bytes to persistent buffer
+        m_rx_buf.append(chunk, bytes_read);
+
+        bool found_valid = false;
+
+        // Process every complete line currently in the buffer
+        size_t newline_pos;
+
+        while ((newline_pos = m_rx_buf.find('\n')) != std::string::npos) {
+
+            std::string line =
+                m_rx_buf.substr(0, newline_pos);
+
+            // Remove the processed line from the buffer
+            m_rx_buf.erase(0, newline_pos + 1);
+
+            // Remove optional '\r'
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+
+            // Must start with '$'
+            if (line.empty() || line[0] != '$') {
+                continue;
+            }
+
+            // Find '*'
+            size_t star_pos = line.find('*');
+
+            if (star_pos == std::string::npos) {
+                continue;
+            }
+
+            // Extract message body
+            std::string body =
+                line.substr(1, star_pos - 1);
+
+            // Extract CRC after '*'
+            std::string provided_crc =
+                line.substr(star_pos + 1);
+
+            if (provided_crc.size() != 2) {
+                continue;
+            }
+
+            // Calculate XOR CRC over message body
+            uint8_t crc = 0;
+
+            for (char c : body) {
+                crc ^= static_cast<uint8_t>(c);
+            }
+
+            // Convert calculated CRC to 2-digit uppercase HEX
+            std::ostringstream crc_stream;
+            crc_stream << std::uppercase
+                       << std::setfill('0')
+                       << std::setw(2)
+                       << std::hex
+                       << static_cast<int>(crc);
+
+            std::string expected_crc = crc_stream.str();
+
+            // Reject corrupted message
+            if (provided_crc != expected_crc) {
+                continue;
+            }
+
+            // Split body using commas
+            std::istringstream ss(body);
+            std::string token;
+            std::vector<std::string> tokens;
+
+            while (std::getline(ss, token, ',')) {
+                tokens.push_back(token);
+            }
+
+            // Expected:
+            // ROVER, IMU, accel_x, accel_y, yaw
+            if (tokens.size() < 5 ||
+                tokens[0] != "ROVER" ||
+                tokens[1] != "IMU") {
+                continue;
+            }
+
+            try {
+                imu.accel_x = std::stof(tokens[2]);
+                imu.accel_y = std::stof(tokens[3]);
+                imu.yaw     = std::stof(tokens[4]);
+
+                found_valid = true;
+            }
+            catch (...) {
+                continue;
+            }
+        }
+
+        return found_valid;
     }
 
 private:
