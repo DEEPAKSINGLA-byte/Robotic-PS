@@ -109,12 +109,53 @@ public:
 
         // --------------------------------------------------------------------
         // TODO 2: Initialize POSIX Serial Port (m_serial_port) with termios.h.
-        // - Open device port using open() in O_RDWR | O_NOCTTY | O_NONBLOCK mode.
-        // - Configure baud rate to B115200 (cfsetospeed / cfsetispeed).
-        // - Set 8N1 raw mode (CS8, no parity PARENB, 1 stop bit CSTOPB).
-        // - Configure non-blocking read settings (VMIN=0, VTIME=0).
-        // - Apply termios settings using tcsetattr(TCSANOW).
         // --------------------------------------------------------------------
+        m_serial_fd = open(m_serial_port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+        if (m_serial_fd < 0) {
+            std::cerr << "[UART] Failed to open " << m_serial_port << std::endl;
+            return false;
+        }
+
+        struct termios tty{};
+        if (tcgetattr(m_serial_fd, &tty) != 0) {
+            std::cerr << "[UART] Failed to get termios settings." << std::endl;
+            close(m_serial_fd);
+            m_serial_fd = -1;
+            return false;
+        }
+
+        // Set baud rate to 115200
+        cfsetospeed(&tty, B115200);
+        cfsetispeed(&tty, B115200);
+
+        // 8N1 raw mode, no hardware flow control
+        tty.c_cflag &= ~PARENB;
+        tty.c_cflag &= ~CSTOPB;
+        tty.c_cflag &= ~CSIZE;
+        tty.c_cflag |= CS8;
+        tty.c_cflag &= ~CRTSCTS;
+        tty.c_cflag |= CREAD | CLOCAL;
+
+        // Raw local mode
+        tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+
+        // Raw input/output
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+        tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
+        tty.c_oflag &= ~OPOST;
+
+        // Non-blocking read settings
+        tty.c_cc[VMIN] = 0;
+        tty.c_cc[VTIME] = 0;
+
+        if (tcsetattr(m_serial_fd, TCSANOW, &tty) != 0) {
+            std::cerr << "[UART] Failed to set termios settings." << std::endl;
+            close(m_serial_fd);
+            m_serial_fd = -1;
+            return false;
+        }
+
+        std::cout << "[UART] Serial port opened at 115200 8N1 (non-blocking)." << std::endl;
 
         return (m_can_fd >= 0 && m_serial_fd >= 0);
     }
@@ -129,8 +170,11 @@ public:
      * Calculate: checksum = payload[0] ^ payload[1] ^ ... ^ payload[6]
      */
     uint8_t computeCanChecksum(const uint8_t* payload_7bytes) {
-        // CANDIDATE IMPLEMENTATION HERE
-        return 0;
+        uint8_t checksum = 0;
+        for (int i = 0; i < 7; ++i) {
+            checksum ^= payload_7bytes[i];
+        }
+        return checksum;
     }
 
     /**
