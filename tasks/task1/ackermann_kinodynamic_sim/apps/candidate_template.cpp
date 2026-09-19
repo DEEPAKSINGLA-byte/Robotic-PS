@@ -22,6 +22,7 @@
 #include <queue>
 #include <unordered_map>
 #include <tuple>
+#include <limits>
 struct VehicleParams {
     double length = 4.0;
     double width = 1.8;
@@ -439,13 +440,73 @@ int main(int argc, char** argv) {
             if (coll) { std::cout << "[Client] Collision detected!" << std::endl; break; }
             if (goal_done) { std::cout << "[Client] Goal reached!" << std::endl; break; }
 
-            if (target_idx < path.size()) {
-                std::ostringstream cmd_ss;
-                cmd_ss << "CTRL " << path[target_idx].v << " " << path[target_idx].delta << "\n";
-                std::string cmd_str = cmd_ss.str();
-                write(sock, cmd_str.c_str(), cmd_str.length());
-                target_idx++;
+            if (path.empty()) {
+                std::cout << "[Client] No path to follow!" << std::endl;
+                break;
             }
+
+            // Path tracking controller
+            auto getYawDiffSigned = [](double target_yaw, double current_yaw) -> double {
+                double diff = target_yaw - current_yaw;
+                while(diff > M_PI) diff -= 2.0 * M_PI;
+                while(diff < -M_PI) diff += 2.0 * M_PI;
+                return diff;
+            };
+
+            // Find nearest path point
+            double min_dist = std::numeric_limits<double>::max();
+            // Start searching from current target_idx to prevent going backwards
+            for (size_t i = target_idx; i < path.size(); ++i) {
+                double dist = std::hypot(cur_x - path[i].x, cur_y - path[i].y);
+                if (dist < min_dist) {
+                    min_dist = dist;
+                    target_idx = i;
+                }
+            }
+
+            // Choose lookahead target (e.g. 5 steps ahead)
+            size_t lookahead = 5;
+            size_t lookahead_idx = std::min(target_idx + lookahead, path.size() - 1);
+            const Pose2D& target = path[lookahead_idx];
+
+            // Calculate Lateral Error
+            double dx = target.x - cur_x;
+            double dy = target.y - cur_y;
+            // Car's lateral axis (left is positive)
+            double lat_x = -std::sin(cur_yaw);
+            double lat_y = std::cos(cur_yaw);
+            double e_y = dx * lat_x + dy * lat_y;
+
+            // Calculate Heading Error
+            double e_theta = getYawDiffSigned(target.yaw, cur_yaw);
+
+            bool is_reverse = (target.v < 0);
+            if (is_reverse) {
+                e_y = -e_y;
+                e_theta = getYawDiffSigned(cur_yaw, target.yaw);
+            }
+
+            // Calculate Steering
+            double k_e = 0.5;
+            double k_theta = 1.0;
+            double target_delta = k_e * e_y + k_theta * e_theta;
+            target_delta = std::max(-v_params.max_steer, std::min(v_params.max_steer, target_delta));
+
+            // Calculate Speed
+            double target_v = is_reverse ? v_params.min_speed : v_params.max_speed;
+            
+            if (std::abs(target_delta) > 0.4 || std::abs(e_y) > 1.0) {
+                target_v *= 0.5; // Slow down for tight turns or large errors
+            }
+
+            if (lookahead_idx == path.size() - 1 && min_dist < 2.0) {
+                target_v *= 0.5; // Slow down near goal
+            }
+
+            std::ostringstream cmd_ss;
+            cmd_ss << "CTRL " << target_v << " " << target_delta << "\n";
+            std::string cmd_str = cmd_ss.str();
+            write(sock, cmd_str.c_str(), cmd_str.length());
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
