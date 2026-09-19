@@ -23,6 +23,34 @@
 #include <unordered_map>
 #include <tuple>
 #include <limits>
+#include <cerrno>
+
+bool readLine(int sock, std::string& pending, std::string& line) {
+    while (true) {
+        auto end = pending.find('\n');
+        if (end != std::string::npos) {
+            line = pending.substr(0, end);
+            pending.erase(0, end + 1);
+            return true;
+        }
+        char buffer[16384];
+        ssize_t n = read(sock, buffer, sizeof(buffer));
+        if (n > 0) pending.append(buffer, static_cast<size_t>(n));
+        else if (n < 0 && errno == EINTR) continue;
+        else return false;
+    }
+}
+
+bool sendMessage(int sock, const std::string& msg) {
+    size_t sent = 0;
+    while (sent < msg.size()) {
+        ssize_t n = send(sock, msg.data() + sent, msg.size() - sent, MSG_NOSIGNAL);
+        if (n > 0) sent += static_cast<size_t>(n);
+        else if (n < 0 && errno == EINTR) continue;
+        else return false;
+    }
+    return true;
+}
 struct VehicleParams {
     double length = 4.0;
     double width = 1.8;
@@ -114,6 +142,8 @@ public:
             // Respect vehicle speed and steering limits
             double cmd_v = std::max(params.min_speed, std::min(params.max_speed, v));
             double cmd_delta = std::max(-params.max_steer, std::min(params.max_steer, delta));
+            // Simulator default: 1 rad/s (not included in CONFIG).
+            cmd_delta = state.delta + std::clamp(cmd_delta-state.delta, -dt, dt);
             
             // Apply Ackermann kinematics
             next.x += cmd_v * std::cos(state.yaw) * dt;
@@ -271,7 +301,8 @@ public:
         while (!open_set.empty()) {
             int curr_idx = open_set.top();
             open_set.pop();
-            const AStarNode& curr_node = all_nodes[curr_idx];
+            // Successor insertion can reallocate all_nodes; keep a stable copy.
+            const AStarNode curr_node = all_nodes[curr_idx];
             
             expanded_nodes++;
             if (expanded_nodes % 5000 == 0) {
@@ -330,7 +361,7 @@ public:
                         
                         // Pass along the applied motion controls safely to state 
                         next_node.state.v = v;
-                        next_node.state.delta = delta;
+                        // Keep actual rate-limited steering in the state.
                         
                         all_nodes.push_back(next_node);
                         open_set.push(all_nodes.size() - 1);
@@ -342,11 +373,26 @@ public:
         if (goal_node_idx != -1) {
             std::cout << "[Candidate Template] Path found! Nodes expanded: " << expanded_nodes << std::endl;
             int curr = goal_node_idx;
+            std::vector<int> chain;
             while(curr != -1) {
                 path.push_back(all_nodes[curr].state);
+                chain.push_back(curr);
                 curr = all_nodes[curr].parent_index;
             }
             std::reverse(path.begin(), path.end());
+            std::reverse(chain.begin(), chain.end());
+            // Reconstruct the same intermediate states checked by the search.
+            std::vector<Pose2D> dense;
+            dense.push_back(path.front());
+            for (size_t i = 1; i < path.size(); ++i) {
+                Pose2D state = dense.back();
+                for (int j = 0; j < sim_steps; ++j) {
+                    state = stepVehicle(state, all_nodes[chain[i]].v_used,
+                                        all_nodes[chain[i]].delta_used, sim_dt);
+                    dense.push_back(state);
+                }
+            }
+            path = std::move(dense);
         } else {
             std::cout << "[Candidate Template] Hybrid A* failed to find a path! Expanded: " << expanded_nodes << std::endl;
         }
@@ -381,25 +427,23 @@ int main(int argc, char** argv) {
 
     // Send query
     std::string query = "Q\n";
-    write(sock, query.c_str(), query.length());
-
-    char buffer[16384];
-    ssize_t bytes = read(sock, buffer, sizeof(buffer) - 1);
-    if (bytes <= 0) return 1;
-    buffer[bytes] = '\0';
+    if (!sendMessage(sock, query)) { close(sock); return 1; }
 
     Pose2D start, goal;
     VehicleParams v_params;
-    double map_w, map_h, res, orig_x, orig_y;
+    double map_w = 0, map_h = 0, res = 0, orig_x = 0, orig_y = 0;
     int cols = 0, rows = 0;
     std::vector<uint8_t> grid;
 
-    std::string msg(buffer);
-    std::istringstream ss(msg);
+    std::string pending;
     std::string line;
-
-    while (std::getline(ss, line)) {
-        if (line.rfind("CONFIG", 0) == 0) {
+    bool got_config = false, got_grid = false;
+    while (!got_config || !got_grid) {
+        if (!readLine(sock, pending, line)) {
+            std::cerr << "[Client] Disconnected before complete CONFIG/GRID." << std::endl;
+            close(sock); return 1;
+        }
+        if (line.rfind("CONFIG ", 0) == 0) {
             std::istringstream line_ss(line.substr(7));
             line_ss >> start.x >> start.y >> start.yaw
                     >> goal.x >> goal.y >> goal.yaw
@@ -407,20 +451,43 @@ int main(int argc, char** argv) {
                     >> v_params.max_steer >> v_params.max_speed >> v_params.min_speed
                     >> map_w >> map_h >> res >> orig_x >> orig_y
                     >> cols >> rows;
+            if (!line_ss || cols <= 0 || rows <= 0 || !(res > 0)) {
+                std::cerr << "[Client] Invalid CONFIG." << std::endl;
+                close(sock); return 1;
+            }
+            got_config = true;
         }
-        else if (line.rfind("GRID", 0) == 0) {
+        else if (line.rfind("GRID ", 0) == 0) {
             std::istringstream line_ss(line.substr(5));
-            size_t count;
-            line_ss >> count;
+            size_t count = 0;
+            if (!(line_ss >> count)) { close(sock); return 1; }
+            grid.clear();
             int val;
             while (line_ss >> val) grid.push_back(val ? 1 : 0);
+            if (grid.size() != count || !line_ss.eof()) {
+                std::cerr << "[Client] Invalid GRID cell count/data." << std::endl;
+                close(sock); return 1;
+            }
+            got_grid = true;
         }
+    }
+    if (grid.size() != static_cast<size_t>(cols) * rows) {
+        std::cerr << "[Client] GRID/CONFIG dimensions disagree." << std::endl;
+        close(sock); return 1;
     }
 
     std::cout << "[Client] Config loaded. Map: " << cols << "x" << rows << " resolution: " << res << "m" << std::endl;
 
     CandidateSolver solver;
     auto path = solver.solve(start, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
+    auto uploadPath = [&]() {
+        std::ostringstream msg;
+        msg << "TRAJ ";
+        for (const auto& p : path) msg << p.x << ' ' << p.y << ' ' << p.yaw << ' ' << p.v << ';';
+        msg << '\n';
+        return sendMessage(sock, msg.str());
+    };
+    if (!uploadPath()) { close(sock); return 1; }
     auto computeControl = [&](const Pose2D& current, const std::vector<Pose2D>& path, size_t& nearest_idx, double& out_e_y, double& out_e_theta) -> std::pair<double, double> {
         if (path.empty()) {
             out_e_y = 0.0;
@@ -458,29 +525,28 @@ int main(int argc, char** argv) {
                 break;
             }
         }
-        const Pose2D& target = path[lookahead_idx];
-
         // 5. Calculate lateral error (Cross Track Error)
-        double dx = current.x - target.x;
-        double dy = current.y - target.y;
-        double path_cos = std::cos(target.yaw);
-        double path_sin = std::sin(target.yaw);
+        const Pose2D& reference = path[nearest_idx];
+        double dx = current.x - reference.x;
+        double dy = current.y - reference.y;
+        double path_cos = std::cos(reference.yaw);
+        double path_sin = std::sin(reference.yaw);
         double e_y = path_cos * dy - path_sin * dx;
 
         // 4. Calculate heading error
-        double e_theta = getYawDiffSigned(target.yaw, current.yaw);
+        double e_theta = getYawDiffSigned(reference.yaw, current.yaw);
 
         // 7. Handle forward versus reverse
         bool is_reverse = (path[nearest_idx].v < 0);
         if (is_reverse) {
-            e_y = -e_y;
-            e_theta = getYawDiffSigned(current.yaw, target.yaw);
+            e_theta = getYawDiffSigned(current.yaw, reference.yaw);
         }
 
         // 6. Compute steering
         double K_CTE = 0.5;
         double K_YAW = 1.0;
-        double delta = K_CTE * e_y + K_YAW * e_theta;
+        double delta = path[std::min(nearest_idx+1, path.size()-1)].delta
+                       - K_CTE * e_y + K_YAW * e_theta;
         delta = std::max(-v_params.max_steer, std::min(v_params.max_steer, delta));
 
         // 8. Slow down during difficult tracking
@@ -508,6 +574,11 @@ int main(int argc, char** argv) {
         if (lookahead_idx == path.size() - 1 && min_dist < 2.0) {
             target_v *= 0.5; // Slow down near goal
         }
+        if (std::hypot(current.x-goal.x, current.y-goal.y) < 0.40 &&
+            std::abs(getYawDiffSigned(goal.yaw, current.yaw)) < 0.30) {
+            target_v = 0;
+            delta = 0;
+        }
         
         out_e_y = e_y;
         out_e_theta = e_theta;
@@ -521,23 +592,20 @@ int main(int argc, char** argv) {
     const double REPLAN_YAW_THRESHOLD = 0.5; // rad
     double last_replan_time = -10000.0;
     const double REPLAN_COOLDOWN_MS = 2000.0; // 2 seconds
+    bool reached_goal = false;
 
     while (true) {
-        bytes = read(sock, buffer, sizeof(buffer) - 1);
-        if (bytes <= 0) break;
-        buffer[bytes] = '\0';
-
-        std::string telem_str(buffer);
-        if (telem_str.find("TELEMETRY") != std::string::npos) {
-            std::istringstream t_ss(telem_str);
+        if (!readLine(sock, pending, line)) break;
+        if (line.rfind("TELEMETRY ", 0) == 0) {
+            std::istringstream t_ss(line);
             std::string tag;
             uint64_t step;
             double t_ms, cur_x, cur_y, cur_yaw, cur_v, cur_delta;
             int coll, goal_done;
             t_ss >> tag >> step >> t_ms >> cur_x >> cur_y >> cur_yaw >> cur_v >> cur_delta >> coll >> goal_done;
-
+            if (!t_ss) { std::cerr << "[Client] Invalid telemetry." << std::endl; break; }
             if (coll) { std::cout << "[Client] Collision detected!" << std::endl; break; }
-            if (goal_done) { std::cout << "[Client] Goal reached!" << std::endl; break; }
+            if (goal_done) { reached_goal = true; std::cout << "[Client] Goal reached!" << std::endl; break; }
 
             if (path.empty()) {
                 std::cout << "[Client] No path to follow!" << std::endl;
@@ -554,14 +622,15 @@ int main(int argc, char** argv) {
             double cur_e_y = 0.0;
             double cur_e_theta = 0.0;
             auto [target_v, target_delta] = computeControl(current_state, path, target_idx, cur_e_y, cur_e_theta);
-
             // Replanning check
             if ((std::abs(cur_e_y) > REPLAN_CTE_THRESHOLD || std::abs(cur_e_theta) > REPLAN_YAW_THRESHOLD) 
                 && (t_ms - last_replan_time > REPLAN_COOLDOWN_MS)) {
                 
                 std::cout << "[Client] Tracking error too large (e_y=" << cur_e_y << ", e_th=" << cur_e_theta << "). Replanning!" << std::endl;
+                if (!sendMessage(sock, "CTRL 0 0\n")) break;
                 
                 path = solver.solve(current_state, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
+                if (!uploadPath()) break;
                 target_idx = 0;
                 last_replan_time = t_ms;
                 
@@ -579,11 +648,12 @@ int main(int argc, char** argv) {
             std::ostringstream cmd_ss;
             cmd_ss << "CTRL " << target_v << " " << target_delta << "\n";
             std::string cmd_str = cmd_ss.str();
-            write(sock, cmd_str.c_str(), cmd_str.length());
+            if (!sendMessage(sock, cmd_str)) break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
+    sendMessage(sock, "CTRL 0 0\n");
     close(sock);
-    return 0;
+    return reached_goal ? 0 : 1;
 }
