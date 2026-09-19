@@ -1,6 +1,6 @@
 import math
 import random
-from drone_sim import BASE
+from .drone_sim import BASE
 
 def generate_wind_events(seed, max_time=40*60):
     """
@@ -24,8 +24,6 @@ def generate_wind_events(seed, max_time=40*60):
         
         # Spatial size of the burst
         radius = rng.uniform(150.0, 300.0)
-        
-        # Wind velocity bounded between 1.0 and 5.0 m/s
         angle = rng.uniform(0, 2 * math.pi)
         speed = rng.uniform(1.0, 5.0)
         

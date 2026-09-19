@@ -1,6 +1,6 @@
 import math
-from drone_sim import BASE, DroneState
-from physics import *
+from .drone_sim import BASE, DroneState
+from .physics import *
 
 FULL_CHARGE_TIME = 40 * 60
 
@@ -176,4 +176,3 @@ def plan_fleet_preparation(drones, packages, charging_pads, sim_time):
         if selected["pad_id"] is not None:
             pad_ready[selected["pad_id"]] = selected["charge_end"]
     return plans
-

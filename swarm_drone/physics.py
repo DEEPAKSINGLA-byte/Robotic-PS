@@ -1,5 +1,5 @@
 import math
-from drone_sim import BASE
+from .drone_sim import BASE
 
 def move_towards(drone, target, speed, dt, sim_time, wind_events):
     target_x, target_y = target
@@ -20,7 +20,7 @@ def move_towards(drone, target, speed, dt, sim_time, wind_events):
     movement_y = direction_y * speed
     
     # 2. Get wind and convert to pixels/s
-    from wind import get_wind
+    from .wind import get_wind
     wind_x_m, wind_y_m = get_wind(drone.x, drone.y, sim_time, wind_events)
     wind_x_px = meters_to_pixels(wind_x_m)
     wind_y_px = meters_to_pixels(wind_y_m)
@@ -136,4 +136,3 @@ def is_mission_feasible(drone, package, sim_time):
     if reserve_energy < 0.11 * drone.battery_capacity:
         return False
     return True
-

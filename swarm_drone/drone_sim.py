@@ -115,6 +115,7 @@ class Drone2DEnvironment:
         self.routes: Dict[int, List[Tuple[float, float]]] = {}
 
         self.message = "Waiting for external simulation state..."
+        self.playback_info = {}
 
     def update_state(
         self,
@@ -123,6 +124,7 @@ class Drone2DEnvironment:
         pad_occupancy: Optional[List[Optional[int]]] = None,
         routes: Optional[Dict[int, List[Tuple[float, float]]]] = None,
         message: Optional[str] = None,
+        playback_info: Optional[dict] = None,
     ):
         """
         Replace the rendered state with state produced by YOUR simulator.
@@ -142,6 +144,8 @@ class Drone2DEnvironment:
 
         if message is not None:
             self.message = message
+        if playback_info is not None:
+            self.playback_info = playback_info
 
     def add_package(self, package: PackageState):
         """Convenience method for externally-created packages."""
@@ -193,7 +197,7 @@ class Drone2DEnvironment:
 
         # Packages.
         for pkg in self.packages.values():
-            if pkg.delivered:
+            if pkg.delivered or pkg.status in ("REJECTED", "EXPIRED"):
                 continue
 
             x, y = int(pkg.x), int(pkg.y)
@@ -297,6 +301,25 @@ class Drone2DEnvironment:
             cv2.putText(frame, f"{status}: {count}", (x, y),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.38, (70, 70, 70), 1)
             y += 20
+
+        for label, count in (
+            ("REQUESTS RECEIVED", len(self.packages)),
+            ("AIRBORNE", sum(d.status in ("DELIVERY", "RETURNING") for d in self.drones.values())),
+            ("CHARGING", sum(d.status == "CHARGING" for d in self.drones.values())),
+            ("CHARGING QUEUE", sum(d.status == "WAITING_FOR_CHARGE" for d in self.drones.values())),
+        ):
+            cv2.putText(frame, f"{label}: {count}", (x, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, (70, 70, 70), 1)
+            y += 20
+
+        if self.playback_info:
+            elapsed = int(self.playback_info["real_seconds"])
+            lines = (f"REAL ELAPSED: {elapsed // 60:02d}:{elapsed % 60:02d}",
+                     f"ACTUAL SPEED: {self.playback_info['actual_speed']:.2f}x")
+            for line in lines:
+                cv2.putText(frame, line, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.38, (70, 70, 70), 1)
+                y += 20
 
         y = HEIGHT - 62
         cv2.putText(

@@ -1,4 +1,4 @@
-from physics import *
+from ..physics import *
 
 def calculate_assignment_features(drones, drone_id, package, sim_time):
     drone = drones[drone_id]
@@ -13,8 +13,7 @@ def calculate_assignment_features(drones, drone_id, package, sim_time):
     # 2. Energy fraction
     required_energy = calculate_required_battery(drone, package)
     energy_cost = required_energy / max(drone.battery, 1e-6)
-    
-    # 3. Distance
+
     distance = calculate_mission_distance(drone, package)
     
     # 4. Charging risk
@@ -35,4 +34,3 @@ def calculate_assignment_features(drones, drone_id, package, sim_time):
         "charging_risk": charging_risk,
         "slack": slack
     }
-

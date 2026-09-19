@@ -5,9 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import simulation as s
-from drone_sim import BASE, PackageState
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from swarm_drone import simulation as s
+from swarm_drone.drone_sim import BASE, PackageState
 
 
 class AssignmentFSMTests(unittest.TestCase):

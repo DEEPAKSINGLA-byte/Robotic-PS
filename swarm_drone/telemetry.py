@@ -1,7 +1,7 @@
 import math
-from drone_sim import BASE
-from wind import get_wind
-from physics import calculate_speed, calculate_battery_consumption, pixels_to_meters
+from .drone_sim import BASE
+from .wind import get_wind
+from .physics import calculate_speed, calculate_battery_consumption, pixels_to_meters
 
 def evaluate_mission_state(drone, package, sim_time, wind_events):
     # 1. Get current wind

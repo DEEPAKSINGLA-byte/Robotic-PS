@@ -1,8 +1,9 @@
 import sys
-sys.path.insert(0, '/home/deepak/swarm_drone')
-import simulation
-import drone_sim
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from swarm_drone import simulation
+from swarm_drone import drone_sim
 def test_movement():
     print("Running test_movement...")
     drone = drone_sim.DroneState(id=1, x=0.0, y=0.0)
@@ -169,6 +170,15 @@ def test_charging_logic():
     assert drones[4].status == "CHARGING"
     assert drones[4].charging_pad is not None
     print("test_charging_logic passed.")
+
+def load_tests(loader, tests, pattern):
+    import unittest
+    return unittest.TestSuite(
+        unittest.FunctionTestCase(fn)
+        for name, fn in sorted(globals().items())
+        if name.startswith("test_") and callable(fn)
+    )
+
 
 if __name__ == "__main__":
     test_movement()
