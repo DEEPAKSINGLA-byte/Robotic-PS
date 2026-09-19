@@ -421,6 +421,77 @@ int main(int argc, char** argv) {
 
     CandidateSolver solver;
     auto path = solver.solve(start, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
+    auto computeControl = [&](const Pose2D& current, const std::vector<Pose2D>& path, size_t& nearest_idx) -> std::pair<double, double> {
+        if (path.empty()) return {0.0, 0.0};
+        
+        auto getYawDiffSigned = [](double target_yaw, double current_yaw) -> double {
+            double diff = target_yaw - current_yaw;
+            while(diff > M_PI) diff -= 2.0 * M_PI;
+            while(diff < -M_PI) diff += 2.0 * M_PI;
+            return diff;
+        };
+
+        // 2. Find nearest path point
+        double min_dist = std::numeric_limits<double>::max();
+        size_t best_idx = nearest_idx;
+        for (size_t i = nearest_idx; i < path.size(); ++i) {
+            double dist = std::hypot(current.x - path[i].x, current.y - path[i].y);
+            if (dist < min_dist) {
+                min_dist = dist;
+                best_idx = i;
+            }
+        }
+        nearest_idx = best_idx;
+
+        // 3. Choose lookahead point
+        double lookahead_dist = 1.5; 
+        size_t lookahead_idx = nearest_idx;
+        double accum_dist = 0.0;
+        for (size_t i = nearest_idx; i < path.size() - 1; ++i) {
+            accum_dist += std::hypot(path[i+1].x - path[i].x, path[i+1].y - path[i].y);
+            lookahead_idx = i + 1;
+            if (accum_dist >= lookahead_dist) {
+                break;
+            }
+        }
+        const Pose2D& target = path[lookahead_idx];
+
+        // 5. Calculate lateral error (Cross Track Error)
+        double dx = current.x - target.x;
+        double dy = current.y - target.y;
+        double path_cos = std::cos(target.yaw);
+        double path_sin = std::sin(target.yaw);
+        double e_y = path_cos * dy - path_sin * dx;
+
+        // 4. Calculate heading error
+        double e_theta = getYawDiffSigned(target.yaw, current.yaw);
+
+        // 7. Handle forward versus reverse
+        bool is_reverse = (target.v < 0);
+        if (is_reverse) {
+            e_y = -e_y;
+            e_theta = getYawDiffSigned(current.yaw, target.yaw);
+        }
+
+        // 6. Compute steering
+        double K_CTE = 0.5;
+        double K_YAW = 1.0;
+        double delta = K_CTE * e_y + K_YAW * e_theta;
+        delta = std::max(-v_params.max_steer, std::min(v_params.max_steer, delta));
+
+        // 8. Slow down during difficult tracking
+        double target_v = is_reverse ? v_params.min_speed : v_params.max_speed;
+        
+        if (std::abs(delta) > 0.4 || std::abs(e_y) > 1.0) {
+            target_v *= 0.5;
+        }
+
+        if (lookahead_idx == path.size() - 1 && min_dist < 2.0) {
+            target_v *= 0.5;
+        }
+        
+        return {target_v, delta};
+    };
 
     size_t target_idx = 0;
     while (true) {
@@ -445,63 +516,14 @@ int main(int argc, char** argv) {
                 break;
             }
 
-            // Path tracking controller
-            auto getYawDiffSigned = [](double target_yaw, double current_yaw) -> double {
-                double diff = target_yaw - current_yaw;
-                while(diff > M_PI) diff -= 2.0 * M_PI;
-                while(diff < -M_PI) diff += 2.0 * M_PI;
-                return diff;
-            };
-
-            // Find nearest path point
-            double min_dist = std::numeric_limits<double>::max();
-            // Start searching from current target_idx to prevent going backwards
-            for (size_t i = target_idx; i < path.size(); ++i) {
-                double dist = std::hypot(cur_x - path[i].x, cur_y - path[i].y);
-                if (dist < min_dist) {
-                    min_dist = dist;
-                    target_idx = i;
-                }
-            }
-
-            // Choose lookahead target (e.g. 5 steps ahead)
-            size_t lookahead = 5;
-            size_t lookahead_idx = std::min(target_idx + lookahead, path.size() - 1);
-            const Pose2D& target = path[lookahead_idx];
-
-            // Calculate Lateral Error
-            double dx = target.x - cur_x;
-            double dy = target.y - cur_y;
-            // Car's lateral axis (left is positive)
-            double lat_x = -std::sin(cur_yaw);
-            double lat_y = std::cos(cur_yaw);
-            double e_y = dx * lat_x + dy * lat_y;
-
-            // Calculate Heading Error
-            double e_theta = getYawDiffSigned(target.yaw, cur_yaw);
-
-            bool is_reverse = (target.v < 0);
-            if (is_reverse) {
-                e_y = -e_y;
-                e_theta = getYawDiffSigned(cur_yaw, target.yaw);
-            }
-
-            // Calculate Steering
-            double k_e = 0.5;
-            double k_theta = 1.0;
-            double target_delta = k_e * e_y + k_theta * e_theta;
-            target_delta = std::max(-v_params.max_steer, std::min(v_params.max_steer, target_delta));
-
-            // Calculate Speed
-            double target_v = is_reverse ? v_params.min_speed : v_params.max_speed;
+            Pose2D current_state;
+            current_state.x = cur_x;
+            current_state.y = cur_y;
+            current_state.yaw = cur_yaw;
+            current_state.v = cur_v;
+            current_state.delta = cur_delta;
             
-            if (std::abs(target_delta) > 0.4 || std::abs(e_y) > 1.0) {
-                target_v *= 0.5; // Slow down for tight turns or large errors
-            }
-
-            if (lookahead_idx == path.size() - 1 && min_dist < 2.0) {
-                target_v *= 0.5; // Slow down near goal
-            }
+            auto [target_v, target_delta] = computeControl(current_state, path, target_idx);
 
             std::ostringstream cmd_ss;
             cmd_ss << "CTRL " << target_v << " " << target_delta << "\n";
