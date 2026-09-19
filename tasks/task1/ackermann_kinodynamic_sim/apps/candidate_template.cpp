@@ -421,8 +421,12 @@ int main(int argc, char** argv) {
 
     CandidateSolver solver;
     auto path = solver.solve(start, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
-    auto computeControl = [&](const Pose2D& current, const std::vector<Pose2D>& path, size_t& nearest_idx) -> std::pair<double, double> {
-        if (path.empty()) return {0.0, 0.0};
+    auto computeControl = [&](const Pose2D& current, const std::vector<Pose2D>& path, size_t& nearest_idx, double& out_e_y, double& out_e_theta) -> std::pair<double, double> {
+        if (path.empty()) {
+            out_e_y = 0.0;
+            out_e_theta = 0.0;
+            return {0.0, 0.0};
+        }
         
         auto getYawDiffSigned = [](double target_yaw, double current_yaw) -> double {
             double diff = target_yaw - current_yaw;
@@ -490,10 +494,19 @@ int main(int argc, char** argv) {
             target_v *= 0.5;
         }
         
+        out_e_y = e_y;
+        out_e_theta = e_theta;
         return {target_v, delta};
     };
 
     size_t target_idx = 0;
+    
+    // Replanning parameters
+    const double REPLAN_CTE_THRESHOLD = 1.0; // 1.0m
+    const double REPLAN_YAW_THRESHOLD = 0.5; // rad
+    double last_replan_time = -10000.0;
+    const double REPLAN_COOLDOWN_MS = 2000.0; // 2 seconds
+
     while (true) {
         bytes = read(sock, buffer, sizeof(buffer) - 1);
         if (bytes <= 0) break;
@@ -523,7 +536,30 @@ int main(int argc, char** argv) {
             current_state.v = cur_v;
             current_state.delta = cur_delta;
             
-            auto [target_v, target_delta] = computeControl(current_state, path, target_idx);
+            double cur_e_y = 0.0;
+            double cur_e_theta = 0.0;
+            auto [target_v, target_delta] = computeControl(current_state, path, target_idx, cur_e_y, cur_e_theta);
+
+            // Replanning check
+            if ((std::abs(cur_e_y) > REPLAN_CTE_THRESHOLD || std::abs(cur_e_theta) > REPLAN_YAW_THRESHOLD) 
+                && (t_ms - last_replan_time > REPLAN_COOLDOWN_MS)) {
+                
+                std::cout << "[Client] Tracking error too large (e_y=" << cur_e_y << ", e_th=" << cur_e_theta << "). Replanning!" << std::endl;
+                
+                path = solver.solve(current_state, goal, grid, cols, rows, res, orig_x, orig_y, v_params);
+                target_idx = 0;
+                last_replan_time = t_ms;
+                
+                if (path.empty()) {
+                    std::cout << "[Client] Replan failed!" << std::endl;
+                    break;
+                }
+                
+                // Re-evaluate control for the new path immediately
+                auto cmds = computeControl(current_state, path, target_idx, cur_e_y, cur_e_theta);
+                target_v = cmds.first;
+                target_delta = cmds.second;
+            }
 
             std::ostringstream cmd_ss;
             cmd_ss << "CTRL " << target_v << " " << target_delta << "\n";
